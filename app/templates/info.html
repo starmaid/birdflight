@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+{% block pageinfo %}
+<p class="pageinfo text">Info page. Shows current user's details.</p>
+{% endblock %}
+
+{% block left %}
+<div class="ctextcontainer">
+  <h2>Netkiss</h2>
+  <p>{{ version }}</p>
+</div>
+{% endblock %}
+
+{% block right %}
+<div class="textcontainer">
+  <p>hostname: {{ hostname }}</p>
+  <p>server port: {{ port }}</p>
+  <form action="/pubkey" method="get">
+    <button type="submit">Download Your Pubkey</button>
+  </form>
+</div>
+{% endblock %}

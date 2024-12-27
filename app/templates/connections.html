@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block pageinfo %}
+<p class="pageinfo text">Connections. Shows current server user and client user, if active. Allows starting and stopping
+  of server, and connecting to server player.</p>
+{% endblock %}
+
+{% block left %}
+<div class="textcontainer">
+  {% if zlistener is none %}
+  <p>Select a server player to recieve data from.</p>
+  <form action="{{ url_for('connections') }}" method="post">
+    <input type="hidden" id="type" name="type" value="listener">
+    <input type="hidden" id="type" name="action" value="connect">
+    <select name="hostname" />
+    {% for f, val in friends|items %}
+    <option value="{{ f }}">{{ f }}</option>
+    {% endfor %}
+    <input type="submit" value="Connect" />
+  </form>
+  {% else %}
+  <p>Currently connected to {{ zlistener }}</p>
+  <form action="{{ url_for('connections') }}" method="post">
+    <input type="hidden" id="type" name="type" value="listener">
+    <input type="hidden" id="type" name="action" value="disconnect">
+    <input type="submit" value="Disconnect" />
+  </form>
+  <p>Last ping: None</p>
+  {% endif %}
+  {% if error %}
+  <p style="color:red">Bad request.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block right %}
+<div class="textcontainer">
+  {% if zsender is none %}
+  <p>Click to enable server.</p>
+  <p>You do not control who connects as your client player.</p>
+  <form action="{{ url_for('connections') }}" method="post">
+    <input type="hidden" id="type" name="type" value="sender">
+    <input type="hidden" id="type" name="action" value="connect">
+    <input type="submit" value="Start Server" />
+  </form>
+  {% else %}
+  <p>Currently connected to {{ zsender }}</p>
+  <form action="{{ url_for('connections') }}" method="post">
+    <input type="hidden" id="type" name="type" value="sender">
+    <input type="hidden" id="type" name="action" value="disconnect">
+    <input type="submit" value="Disconnect" />
+  </form>
+  <p>Last ping: None</p>
+  {% endif %}
+  {% if error %}
+  <p style="color:red">Bad request.</p>
+  {% endif %}
+</div>
+{% endblock %}

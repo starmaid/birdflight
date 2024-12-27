@@ -1,0 +1,5 @@
+{
+    "hostname": "example.com",
+    "flaskport": 80,
+    "debug": true
+}

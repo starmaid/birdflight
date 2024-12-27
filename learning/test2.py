@@ -5,9 +5,9 @@ import time
 
 import imutils.feature.factories as kp_factory
 
-#cap = cv.VideoCapture('osprey_slomo.mp4')
-#cap = cv.VideoCapture('20241216_143841.mp4')
-cap = cv.VideoCapture('20241216_142253.mp4')
+#cap = cv.VideoCapture('../test_video/osprey_slomo.mp4')
+#cap = cv.VideoCapture('../test_video/20241216_143841.mp4')
+cap = cv.VideoCapture('test_video/20241216_142253.mp4')
 
 length = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
 
@@ -146,6 +146,6 @@ while(cap.isOpened()):
     elif cv.waitKey(1) & 0xFF == ord('w'):
         time.sleep(5)
 
-cv.imwrite(f"save_{time.time()}.png",background)
+cv.imwrite(f"output/save_{time.time()}.png",background)
 
 cv.destroyAllWindows()
