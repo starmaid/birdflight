@@ -17,16 +17,27 @@
     {% endif %}
     <h3>Modify Settings</h3>
     <form action="/api/nodes" method="post" enctype="multipart/form-data">
-      <label for="range1">Skip frames</label><br>
-      <p id="demo"></p><input type="range" min="1" max="100" value="50" class="slider" id="myRange" name="range1">
+      <label for="range1">Skip frames</label>
+      <div id="demo"></div>
+      <input type="range" min="0" max="15" value="0" class="slider" id="myRange" name="range1">
       <br>
       <label for="range2">Blurring</label><br>
       <input type="range" min="1" max="100" value="50" class="slider" id="myRange" name="range2"><br>
       <button type="submit">Generate New Image</button>
     </form>
-    
+
   </div>
 </div>
+<script>
+  var slider = document.getElementById("myRange");
+  var output = document.getElementById("demo");
+  output.innerHTML = slider.value; // Display the default slider value
+
+  // Update the current slider value (each time you drag the slider handle)
+  slider.oninput = function () {
+    output.innerHTML = this.value;
+  } 
+</script>
 {% endblock %}
 
 {% block right %}
@@ -37,14 +48,3 @@
   </form>
 </div>
 {% endblock %}
-
-<script>
-var slider = document.getElementById("myRange");
-var output = document.getElementById("demo");
-output.innerHTML = slider.value; // Display the default slider value
-
-// Update the current slider value (each time you drag the slider handle)
-slider.oninput = function() {
-  output.innerHTML = this.value;
-} 
-</script>
