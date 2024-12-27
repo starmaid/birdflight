@@ -1,26 +1,50 @@
 {% extends "layout.html" %}
 {% block pageinfo %}
-<p class="pageinfo text">Homepage. Overview and vague details. Has network map.</p>
+<p class="pageinfo text">Homepage. Create a new image here.</p>
 {% endblock %}
 
 {% block left %}
 <div class="ctextcontainer">
-  <h2>Network Graph</h2>
-  <p></p>
-  <p>ZMQ port: {{ zport }}</p>
-  <p>Debug: {{ isdebug }}</p>
+  <div class="textcontainer">
+    <h3>Upload Video</h3>
+    <form action="/api/nodes" method="post" enctype="multipart/form-data">
+      <input type="file" name="key" id="keyfile" accept="video/*"><br>
+      <button type="submit">Upload</button>
+    </form>
+
+    {% if error %}
+    <p>Error saving node: {{ error }}</p>
+    {% endif %}
+    <h3>Modify Settings</h3>
+    <form action="/api/nodes" method="post" enctype="multipart/form-data">
+      <label for="range1">Skip frames</label><br>
+      <p id="demo"></p><input type="range" min="1" max="100" value="50" class="slider" id="myRange" name="range1">
+      <br>
+      <label for="range2">Blurring</label><br>
+      <input type="range" min="1" max="100" value="50" class="slider" id="myRange" name="range2"><br>
+      <button type="submit">Generate New Image</button>
+    </form>
+    
+  </div>
 </div>
 {% endblock %}
 
 {% block right %}
 <div class="ctextcontainer">
-  <p>Preview of incoming data.</p>
-  {% if text %}
-  <p>{{ text }}</p>
-  {% elif image %}
-  <p>Theres an image! not implemented yet</p>
-  {% else %}
-  <p>No data incoming.</p>
-  {% endif %}
+  <p>Image Preview</p>
+  <form action="/api/nodes" method="post" enctype="multipart/form-data">
+    <button type="submit">Download Image</button>
+  </form>
 </div>
 {% endblock %}
+
+<script>
+var slider = document.getElementById("myRange");
+var output = document.getElementById("demo");
+output.innerHTML = slider.value; // Display the default slider value
+
+// Update the current slider value (each time you drag the slider handle)
+slider.oninput = function() {
+  output.innerHTML = this.value;
+} 
+</script>

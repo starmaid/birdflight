@@ -5,17 +5,16 @@
 
 {% block left %}
 <div class="ctextcontainer">
-  <h2>Netkiss</h2>
+  <h2>Birdflight</h2>
   <p>{{ version }}</p>
+  <p>hostname: {{ hostname }}</p>
 </div>
 {% endblock %}
 
 {% block right %}
 <div class="textcontainer">
-  <p>hostname: {{ hostname }}</p>
-  <p>server port: {{ port }}</p>
-  <form action="/pubkey" method="get">
-    <button type="submit">Download Your Pubkey</button>
-  </form>
+  <h1>Gallery</h1>
+  <a href="{{ url_for('static', filename='example_1.png') }}"><img src="{{ url_for('static', filename='example_1.png') }}" /></a>
+  <a href="{{ url_for('static', filename='example_2.png') }}"><img src="{{ url_for('static', filename='example_2.png') }}" /></a>
 </div>
 {% endblock %}

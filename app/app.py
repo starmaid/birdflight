@@ -48,117 +48,6 @@ def info():
 
 
 
-@app.route('/api/nodes', methods=['GET','POST'])
-def getNodes():
-    """
-    GET:
-    Returns list of known nodes
-        {
-            "starmaid.us.to": {
-                "hostname": "starmaid.us.to",
-                "port": 6000
-            },
-            ...
-        }
-
-    POST:
-    Called from a submission box. user has uploaded a key
-    Save this file as a new server or client or whatever
-    update config and save file.
-        form = {
-            "hostname": "mimi.com",
-            "port": "9000"
-        }
-        files = {
-            "key": [public key]
-        }
-    
-
-    """
-    global friends
-
-    if request.method == 'POST':
-        if 'hostname' in request.form.keys() and 'port' in request.form.keys():
-            # TODO handle changing the hostname and updating records,
-            # instead of just creating a new user if hostname isnt in friends
-            
-            nHostname = request.form['hostname']
-            nPortStr = request.form['port']
-
-            try:
-                nPort = int(nPortStr)
-            except:
-                return render_template('nodes.html',
-                            friends=friends, 
-                            error='bad port',
-                            hostname=nHostname,
-                            port=nPortStr)
-
-            if nHostname in friends.keys():
-                friends[nHostname]['port'] = nPort
-            else:
-                friends[nHostname] = {
-                    'hostname': nHostname,
-                    'port': nPort
-                }
-
-            didsave = saveFriends(friends)
-            if not didsave:
-                return render_template('nodes.html',
-                            friends=friends, 
-                            error='error saving friends json',
-                            hostname=nHostname,
-                            port=nPortStr)
-
-            if 'key' in request.files.keys() and request.files['key'].filename != '':
-                newfile = request.files['key']
-
-                # now lets do a bunch of checks on the file...
-                if newfile.filename.split('.')[-1] != 'key':
-                    return render_template('nodes.html',
-                                friends=friends, 
-                                error='bad file extension',
-                                hostname=nHostname,
-                                port=nPortStr)
-
-                # TODO There has got to be a better way to find filesize without reading it
-                # newfile.content_length ?
-                fcontent = newfile.read()
-                try:
-                    fcontd = fcontent.decode('ascii')
-                except:
-                    print('decode error')
-                
-                print(len(fcontd))
-                if len(fcontd) > 400:
-                    return render_template('nodes.html',
-                                friends=friends, 
-                                error='file too large to be a pubkey',
-                                hostname=nHostname,
-                                port=nPortStr)
-                
-                if 'public-key' not in fcontd:
-                    return render_template('nodes.html',
-                                friends=friends, 
-                                error='file does not contain key',
-                                hostname=nHostname,
-                                port=nPortStr)
-                
-                newpath = os.path.join(app.root_path,
-                    os.path.normpath(f'./data/friends/{nHostname}.key'))
-                
-                with open(newpath,'w') as f:
-                    # Sanitize CR out
-                    f.write(fcontd.replace('\r',''))
-
-            # return a view of the page with the name they just edited
-            return redirect(url_for('nodes',view=nHostname))
-        else:
-            return
-    else:
-        # just send the JSON over
-        return friends
-
 
 # USER API: For the user's program to interact with ===========================
 
@@ -250,7 +139,7 @@ if __name__ == '__main__':
     version = subprocess.check_output("git describe --tags", shell=True).decode().strip().split('-')[0]
 
     # start web server
-    if config is not None and friends is not None:
+    if config is not None:
         if config['debug']:
             app.run(debug=True, port=config['flaskport'])
         else:

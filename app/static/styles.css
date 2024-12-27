@@ -20,41 +20,47 @@
 }
 
 p {
-    font-family: VT323;
-    color: white;
+    font-family: DMSerifText-Regular;
+    color: black;
 }
 
 a {
-    font-family: VT323;
-    color:#ff00ae
+    font-family: DMSerifText-Regular;
+    color:#57003b
 }
 
 h2 {
-    font-family: TitilliumWeb;
-    color: white;
+    font-family: DMSerifText-Regular;
+    color: black;
 }
 
 label {
-    font-family: VT323;
-    color:white
+    font-family: DMSerifText-Regular;
+    color:black
 }
 
 input {
-    font-family: VT323;
+    font-family: DMSerifText-Regular;
     color:#ff00ae
 }
 
+img {
+  object-fit: cover;
+  width: 50%;
+  max-height: 50%;
+}
+
 .logo {
-    font-family: VT323;
+    font-family: DMSerifText-Regular;
     font-size: 4rem;
     text-align: left;
     height: fit-content;
     margin: 0.5rem;
-    color: white;
+    color: black;
 }
 
 .menu {
-    background-color: rgb(13, 0, 39);
+    background-color: rgb(207, 207, 207);
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -97,7 +103,7 @@ input {
     display: flex;
     flex-flow: row;
     align-items: center;
-    background-color: rgb(0, 26, 50);
+    background-color: white;
     border-radius: 2rem;
 }
 
@@ -111,7 +117,7 @@ input {
     display: flex;
     flex-flow: row;
     align-items: center;
-    background-color: rgb(0, 26, 50);
+    background-color: white;
     border-radius: 2rem;
 }
 
@@ -130,17 +136,17 @@ html,
 body {
     height: 95%;
     margin: 0;
-    background-color: black;
+    background-color: rgb(205, 205, 205);
 }
 
 .box {
     display: flex;
     flex-flow: column;
-    height: 110%;
+    height: 100%;
 }
 
 .box .row {
-    border: 1px dotted #0313fc;
+    border: 1px dotted #d3d6ff;
 }
 
 .box .row.header {
