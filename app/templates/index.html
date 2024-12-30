@@ -16,35 +16,54 @@
     <p>Error saving node: {{ error }}</p>
     {% endif %}
     <h3>Modify Settings</h3>
-    <form action="/api/nodes" method="post" enctype="multipart/form-data">
+    <form action="/" method="post" enctype="multipart/form-data">
       <label for="range1">Skip frames</label>
-      <div id="demo"></div>
-      <input type="range" min="0" max="15" value="0" class="slider" id="myRange" name="range1">
+      <div id="range1"></div>
+      <input type="range" min="0" max="15" value="0" class="slider" id="range1slider" name="range1slider">
       <br>
-      <label for="range2">Blurring</label><br>
-      <input type="range" min="1" max="100" value="50" class="slider" id="myRange" name="range2"><br>
+      <label for="range2">Frame Blurring</label>
+      <div id="range2"></div>
+      <input type="range" min="0" max="10" value="5" class="slider" id="range2slider" name="range2slider">
+      <br>
       <button type="submit">Generate New Image</button>
     </form>
 
   </div>
 </div>
 <script>
-  var slider = document.getElementById("myRange");
-  var output = document.getElementById("demo");
-  output.innerHTML = slider.value; // Display the default slider value
+  var slider1 = document.getElementById("range1slider");
+  var output1 = document.getElementById("range1");
+  output1.innerHTML = slider1.value; // Display the default slider value
 
   // Update the current slider value (each time you drag the slider handle)
-  slider.oninput = function () {
-    output.innerHTML = this.value;
+  slider1.oninput = function () {
+    output1.innerHTML = this.value;
+  }
+
+  var slider2 = document.getElementById("range2slider");
+  var output2 = document.getElementById("range2");
+  output2.innerHTML = slider2.value; // Display the default slider value
+
+  // Update the current slider value (each time you drag the slider handle)
+  slider2.oninput = function () {
+    output2.innerHTML = this.value;
   } 
 </script>
 {% endblock %}
 
 {% block right %}
 <div class="ctextcontainer">
-  <p>Image Preview</p>
-  <form action="/api/nodes" method="post" enctype="multipart/form-data">
-    <button type="submit">Download Image</button>
-  </form>
+  <h2>Image Preview</h2>
+  {% if preview_img %}
+  <div class="frame-container">
+    <iframe src="/imgview" title="Image Preview" class="responsive-iframe"></iframe>
+  </div>
+  {% else %}
+  <p>No preview yet...</p>
+  {% endif %}
+
+  <p>Right click to save image. Image will refresh as it is loaded.</p>
 </div>
+
+
 {% endblock %}

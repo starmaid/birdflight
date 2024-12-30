@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <img src="{{ preview_img }}">
+    <script>
+        function refresh() {
+            //update src attribute with a cache buster query
+
+            setTimeout("location.reload();", 5000);
+            //console.log("refreshing...");
+        }
+        refresh();
+    </script>
+</body>
+
+</html>

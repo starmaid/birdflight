@@ -8,13 +8,18 @@
   <h2>Birdflight</h2>
   <p>{{ version }}</p>
   <p>hostname: {{ hostname }}</p>
+  <h2>Instructions</h2>
+  <p>1. Upload your video</p>
+  <p>2. Set your settings</p>
+  <p>3. Download the result</p>
+  <p>4. Crop and share!</p>
 </div>
 {% endblock %}
 
 {% block right %}
-<div class="textcontainer">
+<div class="gallerycontainer">
   <h1>Gallery</h1>
-  <a href="{{ url_for('static', filename='example_1.png') }}"><img src="{{ url_for('static', filename='example_1.png') }}" /></a>
-  <a href="{{ url_for('static', filename='example_2.png') }}"><img src="{{ url_for('static', filename='example_2.png') }}" /></a>
+  <a href="{{ url_for('static', filename='example_1.png') }}"><img src="{{ url_for('static', filename='example_1.png') }}" class="imggallery"/></a>
+  <a href="{{ url_for('static', filename='example_2.png') }}"><img src="{{ url_for('static', filename='example_2.png') }}" class="imggallery"/></a>
 </div>
 {% endblock %}

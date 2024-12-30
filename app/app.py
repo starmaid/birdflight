@@ -4,9 +4,15 @@
 import json
 import os
 import subprocess
+import uuid as uuidlib
 
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, render_template, request, make_response, redirect, url_for, send_file
 from waitress import serve
+
+import ipinfo
+import time
+
+handler = ipinfo.getHandler()
 
 app = Flask(__name__)
 listener = None
@@ -14,24 +20,88 @@ sender = None
 
 # PAGES: endpoints that return webpages =======================================
 
-@app.route('/')
+@app.route('/', methods=['GET','POST'])
 def index():
     """
     The homepage. Network graph and data preview.
     """
-    global listener
-    text = None
-    image = None
-    if listener is not None:
-        # we have some data to preview
-        d = listener.getData()
-        print(d)
-        if d['type'] == 'txt':
-            text = d['data'] 
-        # TODO handle and implement more types of data
-    
-    return render_template('index.html', isdebug=config['debug'],text=text,image=image)
 
+    if request.method == 'GET':
+
+        uuid = request.cookies.get('UUID')
+
+        if uuid is None:
+            prev_image = None
+        else:
+            prev_image = f"/static/user/{uuid}/out.png?{int(time.time())}"
+
+        print(request.cookies.get('UUID'))
+        return render_template('index.html', 
+                                error=None,
+                                preview_img=prev_image)
+
+    elif request.method == 'POST':
+        global handler
+        #print(request.form)
+        try:
+            r = request.form.to_dict()
+        except:
+            data = request.form
+            r = str(request.values)
+
+        print(r)
+
+        ip = request.remote_addr
+        ipdetails = handler.getDetails(ip)
+
+        uuid = request.cookies.get('UUID')
+        if uuid is None:
+            # then we have to make a new one
+            uuid = str(uuidlib.uuid4())
+
+        filepath = os.path.normpath(f'{app.root_path}/static/user/{uuid}')
+        meta_filepath = os.path.normpath(f'{filepath}/meta.json')
+
+        try:
+            os.makedirs(filepath)
+        except:
+            pass
+        
+        if os.path.exists(meta_filepath):
+            with open(meta_filepath,'r') as fp:
+                meta = json.load(fp)
+            
+            meta['LAST_REQUEST'] = int(time.time())
+            meta['NUM_REQUESTS'] += 1
+
+            with open(meta_filepath,'w') as fp:
+                json.dump(meta,fp)
+        else:
+            meta = {}
+            meta['IP_ADDRESS'] = ip
+            try:
+                meta['IP_COUNTRY'] = ipdetails.all['country']
+            except:
+                meta['IP_COUNTRY'] = 'UNK'
+            
+            try:
+                meta['IP_CITY'] = ipdetails.all['city']
+            except:
+                meta['IP_COUNTRY'] = 'UNK'
+
+            meta['LAST_REQUEST'] = int(time.time())
+            meta['NUM_REQUESTS'] = 1
+
+            with open(meta_filepath,'w') as fp:
+                json.dump(meta,fp)
+        
+
+        resp = make_response(render_template('index.html',
+                                error=None,
+                                preview_img=f"/static/user/{uuid}/out.png?{int(time.time())}"))
+        resp.set_cookie('UUID', uuid)
+        
+        return resp
         
 
 @app.route('/info')
@@ -46,76 +116,15 @@ def info():
         hostname=config['hostname'],
         )
 
+@app.route('/imgview')
+def imgview():
+    """
+    
+    """
+    uuid = request.cookies.get('UUID')
 
-
-
-# USER API: For the user's program to interact with ===========================
-
-@app.route('/getdata', methods=['GET'])
-def getdata():
-    global listener
-    if listener is None:
-        # Theres no listener, so whatever.
-        d = {'connected': False}
-    else:
-        d = listener.getData()
-    return d
-
-
-@app.route('/setdata', methods=['POST'])
-def setdata():
-    if request.method == 'POST':
-        #print(request.form)
-        try:
-            r = request.form.to_dict()
-        except:
-            data = request.form
-            r = str(request.values)
-
-        print(r)
-        if r is not None:
-            if 'data' not in r.keys():
-                # this means just accept the whole thing. who cares
-                data = str(r)
-                pass
-            else:
-                data = r['data']
-                if 'b64encoded' in r.keys():
-                    try:
-                        encoded = bool(r['b64encoded'])
-                    except:
-                        encoded = False
-                else:
-                    encoded = False
-                if 'type' in r.keys():
-                    dtype = str(r['type'])
-                else:
-                    dtype = 'txt'
-        else:
-            encoded = False
-            dtype = 'txt'
-            pass
-        
-        global sender
-        global listener
-        if sender is None:
-            d = {'connected': False}
-        else:
-            if listener is not None:
-                chain = listener.header['chain']
-                if chain[0] == config['hostname']:
-                    chain.pop(0)
-                chain.append(config['hostname'])
-            else:
-                chain = [config['hostname']]
-
-            print(' '.join([str(v) for v in [data, dtype, chain, encoded]]))
-            success = sender.setData(data, dtype, chain, encoded)
-            d = {'connected': success}
-        
-        return d
-    else:
-        return 'Endpoint only accepts POST'
+    return render_template('imgview.html',
+        preview_img=f"/static/user/{uuid}/out.png?{int(time.time())}")
 
 
 # NON-PAGE HELPERS: do other tasks in the program =============================
