@@ -7,7 +7,7 @@ import subprocess
 import uuid as uuidlib
 import time
 
-from flask import Flask, render_template, request, make_response, redirect, url_for, send_file
+from flask import Flask, render_template, request, make_response, redirect, url_for, send_file, send_from_directory
 from waitress import serve
 
 import ipinfo
@@ -22,6 +22,11 @@ listener = None
 sender = None
 
 # PAGES: endpoints that return webpages =======================================
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.route('/', methods=['GET','POST'])
 def index():
