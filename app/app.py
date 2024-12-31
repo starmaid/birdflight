@@ -209,7 +209,7 @@ if __name__ == '__main__':
     # start web server
     if config is not None:
         if config['debug']:
-            app.run(debug=True, port=config['flaskport'])
+            app.run(debug=True, host='0.0.0.0', port=config['flaskport'])
         else:
             # This is the 'production' WSGI server
-            serve(app, port=config['flaskport'])
+            serve(app, host='0.0.0.0', port=config['flaskport'])
