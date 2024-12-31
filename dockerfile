@@ -1,6 +1,6 @@
 # For more information, please refer to https://aka.ms/vscode-docker-python
 #FROM python:3.10
-FROM hdgigante/python-opencv:4.10.0-alpine
+FROM hdgigante/python-opencv:4.10.0-debian
 
 ENV WITH_GSTREAMER=ON
 ENV WITH_FFMPEG=ON

@@ -109,6 +109,8 @@ class bgenWorker():
             cap = cv.VideoCapture(self.videopath)
             length = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
         except:
+            print("unable to open video")
+            print(format_exc())
             self.haserror.value = True
             self.isdone.value = True
             return
