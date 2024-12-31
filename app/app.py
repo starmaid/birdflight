@@ -129,7 +129,10 @@ def upload():
     videoname = birdgen.getInputFile(filepath)
     
     # delete the last video because the extension might be different
-    os.remove(f'{filepath}/{videoname}')
+    try:
+        os.remove(f'{filepath}/{videoname}')
+    except:
+        pass
     
     if 'videofile' in request.files.keys() and request.files['videofile'].filename != '':
         
