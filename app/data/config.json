@@ -1,5 +1,5 @@
 {
-    "hostname": "example.com",
+    "hostname": "starmaid.us.to",
     "flaskport": 80,
-    "debug": true
+    "debug": false
 }

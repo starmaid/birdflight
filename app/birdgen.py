@@ -255,8 +255,6 @@ if __name__ == "__main__":
     folder1 = "/Users/nmass/Software/birdflight/birdflight/app/static/user/710f861f-a838-4546-8123-458ed89496b9"
     folder2 = "/Users/nmass/Software/birdflight/birdflight/app/static/user/c9344ae2-1b75-4ec7-8a9a-64d8141efc8c"
 
-    print(infile1)
-
     m.startWorker("asdklfjaslkdfj",folder1,5,0)
 
     for i in range(5):

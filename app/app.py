@@ -38,7 +38,7 @@ def index():
         else:
             prev_image = f"/static/user/{uuid}/out.png?{int(time.time())}"
 
-        print(request.cookies.get('UUID'))
+        #print(request.cookies.get('UUID'))
         return render_template('index.html', 
                                 error=None,
                                 preview_img=prev_image)
@@ -131,7 +131,7 @@ def upload():
         
         newfile = request.files['videofile']
 
-        print(newfile)
+        #print(newfile)
 
         # this is always zero??....
         if newfile.content_length > 10000000:
