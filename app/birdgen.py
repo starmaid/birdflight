@@ -166,7 +166,8 @@ class bgenWorker():
                     # just skip it
                     continue
                 
-                self.currframe.value = frame_num
+                # frames are zero indexed duh
+                self.currframe.value = frame_num + 1
                 
                 curr_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY) 
 
