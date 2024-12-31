@@ -5,14 +5,17 @@ import json
 import os
 import subprocess
 import uuid as uuidlib
+import time
 
 from flask import Flask, render_template, request, make_response, redirect, url_for, send_file
 from waitress import serve
 
 import ipinfo
-import time
+
+import birdgen
 
 handler = ipinfo.getHandler()
+birdManager = birdgen.bgenManager()
 
 app = Flask(__name__)
 listener = None
@@ -41,60 +44,18 @@ def index():
                                 preview_img=prev_image)
 
     elif request.method == 'POST':
-        global handler
         #print(request.form)
         try:
             r = request.form.to_dict()
         except:
             data = request.form
             r = str(request.values)
+        #print(r)
 
-        print(r)
+        (uuid, filepath) = getUserFolder(request)
 
-        ip = request.remote_addr
-        ipdetails = handler.getDetails(ip)
-
-        uuid = request.cookies.get('UUID')
-        if uuid is None:
-            # then we have to make a new one
-            uuid = str(uuidlib.uuid4())
-
-        filepath = os.path.normpath(f'{app.root_path}/static/user/{uuid}')
-        meta_filepath = os.path.normpath(f'{filepath}/meta.json')
-
-        try:
-            os.makedirs(filepath)
-        except:
-            pass
-        
-        if os.path.exists(meta_filepath):
-            with open(meta_filepath,'r') as fp:
-                meta = json.load(fp)
-            
-            meta['LAST_REQUEST'] = int(time.time())
-            meta['NUM_REQUESTS'] += 1
-
-            with open(meta_filepath,'w') as fp:
-                json.dump(meta,fp)
-        else:
-            meta = {}
-            meta['IP_ADDRESS'] = ip
-            try:
-                meta['IP_COUNTRY'] = ipdetails.all['country']
-            except:
-                meta['IP_COUNTRY'] = 'UNK'
-            
-            try:
-                meta['IP_CITY'] = ipdetails.all['city']
-            except:
-                meta['IP_COUNTRY'] = 'UNK'
-
-            meta['LAST_REQUEST'] = int(time.time())
-            meta['NUM_REQUESTS'] = 1
-
-            with open(meta_filepath,'w') as fp:
-                json.dump(meta,fp)
-        
+        # start the worker
+        birdManager.startWorker(uuid, filepath, int(r['range1slider']), int(r['range2slider']))
 
         resp = make_response(render_template('index.html',
                                 error=None,
@@ -102,7 +63,102 @@ def index():
         resp.set_cookie('UUID', uuid)
         
         return resp
+
+
+def getUserFolder(request):
+    global handler
+
+    ip = request.remote_addr
+    ipdetails = handler.getDetails(ip)
+
+    uuid = request.cookies.get('UUID')
+    if uuid is None:
+        # then we have to make a new one
+        uuid = str(uuidlib.uuid4())
+
+    filepath = os.path.normpath(f'{app.root_path}/static/user/{uuid}')
+    meta_filepath = os.path.normpath(f'{filepath}/meta.json')
+
+    try:
+        os.makedirs(filepath)
+    except:
+        pass
+    
+    if os.path.exists(meta_filepath):
+        with open(meta_filepath,'r') as fp:
+            meta = json.load(fp)
         
+        meta['LAST_REQUEST'] = int(time.time())
+        meta['NUM_REQUESTS'] += 1
+
+        with open(meta_filepath,'w') as fp:
+            json.dump(meta,fp)
+    else:
+        meta = {}
+        meta['IP_ADDRESS'] = ip
+        try:
+            meta['IP_COUNTRY'] = ipdetails.all['country']
+        except:
+            meta['IP_COUNTRY'] = 'UNK'
+        
+        try:
+            meta['IP_CITY'] = ipdetails.all['city']
+        except:
+            meta['IP_COUNTRY'] = 'UNK'
+
+        meta['LAST_REQUEST'] = int(time.time())
+        meta['NUM_REQUESTS'] = 1
+
+        with open(meta_filepath,'w') as fp:
+            json.dump(meta,fp)
+
+    return(uuid,filepath)
+
+
+@app.route('/api/upload', methods=['POST'])
+def upload():
+    """
+    upload and save video
+    """
+    message = None
+
+    (uuid, filepath) = getUserFolder(request)
+
+    meta_filepath = os.path.normpath(f'{filepath}/meta.json')
+    video_filepath = os.path.normpath(f'{filepath}/meta.json')
+
+    if 'videofile' in request.files.keys() and request.files['videofile'].filename != '':
+        
+        newfile = request.files['videofile']
+
+        print(newfile)
+
+        # this is always zero??....
+        if newfile.content_length > 10000000:
+            message = "File too large. Try cropping or downscaling the video first."
+        else:
+            user_filename = newfile.filename
+            extension = user_filename.split('.')[-1]
+
+            newpath = os.path.join(app.root_path,
+                os.path.normpath(f'./static/user/{uuid}/in.{extension}'))
+
+            fcontent = newfile.read()
+
+            with open(newpath,'wb') as f:
+                # Sanitize CR out
+                f.write(fcontent)
+            
+            message = f"successfully uploaded {newfile.filename} ({newfile.content_length} bytes)"
+        
+    else:
+        message = "unable to process file"
+
+    resp = make_response(render_template('index.html',
+                                error=message))
+    resp.set_cookie('UUID', uuid)
+        
+    return resp
 
 @app.route('/info')
 def info():

@@ -7,19 +7,19 @@
 <div class="ctextcontainer">
   <div class="textcontainer">
     <h3>Upload Video</h3>
-    <form action="/api/nodes" method="post" enctype="multipart/form-data">
-      <input type="file" name="key" id="keyfile" accept="video/*"><br>
+    <form action="/api/upload" method="post" enctype="multipart/form-data">
+      <input type="file" name="videofile" id="videofile" accept="video/*"><br>
       <button type="submit">Upload</button>
     </form>
 
     {% if error %}
-    <p>Error saving node: {{ error }}</p>
+    <p>Message: {{ error }}</p>
     {% endif %}
     <h3>Modify Settings</h3>
     <form action="/" method="post" enctype="multipart/form-data">
       <label for="range1">Skip frames</label>
       <div id="range1"></div>
-      <input type="range" min="0" max="15" value="0" class="slider" id="range1slider" name="range1slider">
+      <input type="range" min="1" max="15" value="1" class="slider" id="range1slider" name="range1slider">
       <br>
       <label for="range2">Frame Blurring</label>
       <div id="range2"></div>
