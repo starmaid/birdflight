@@ -1,5 +1,6 @@
 {
     "hostname": "starmaid.us.to",
     "flaskport": 80,
-    "debug": false
+    "debug": true,
+    "usegit": false
 }

@@ -201,8 +201,11 @@ if __name__ == '__main__':
     # Load config
 
     config = loadConfig()
-    version = subprocess.check_output("git describe --tags", shell=True).decode().strip().split('-')[0]
-
+    if config['usegit']:
+        version = subprocess.check_output("git describe --tags", shell=True).decode().strip().split('-')[0]
+    else:
+        version = '0.1.0'
+    
     # start web server
     if config is not None:
         if config['debug']:
