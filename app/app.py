@@ -125,8 +125,12 @@ def upload():
     (uuid, filepath) = getUserFolder(request)
 
     meta_filepath = os.path.normpath(f'{filepath}/meta.json')
-    video_filepath = os.path.normpath(f'{filepath}/meta.json')
 
+    videoname = birdgen.getInputFile(filepath)
+    
+    # delete the last video because the extension might be different
+    os.remove(f'{filepath}/{videoname}')
+    
     if 'videofile' in request.files.keys() and request.files['videofile'].filename != '':
         
         newfile = request.files['videofile']
