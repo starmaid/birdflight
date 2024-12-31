@@ -1,6 +1,7 @@
 services:
   birdflight:
     image: birdflight
+    pull_policy: build
     build:
       context: .
       dockerfile: ./Dockerfile
