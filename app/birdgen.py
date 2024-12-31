@@ -22,7 +22,9 @@ class bgenManager():
                 "handle": None,
                 "isDone": False,
                 "hasError": False,
-                "startTime": 0
+                "startTime": 0,
+                "totalFrames": 0,
+                "currentFrame": 0
             }
         }
         return
@@ -37,10 +39,12 @@ class bgenManager():
 
         isdone = Value(c_bool,False)
         haserror = Value(c_bool,False)
-
+        totalframes = Value(c_int32,0)
+        currframe = Value(c_int32,0)
+        
         worker_videoname = getInputFile(worker_filepath)
 
-        w = bgenWorker(isdone,haserror,worker_filepath,worker_videoname,param_skipframes,param_bluramount)
+        w = bgenWorker(isdone,haserror,totalframes,currframe,worker_filepath,worker_videoname,param_skipframes,param_bluramount)
         
         # after this point, the class is copied to the new process. Only values with shared memory can be accessed
         bgenworkerproc = Process(target=w.start, args=(), daemon=True)
@@ -50,7 +54,9 @@ class bgenManager():
                 "handle": bgenworkerproc,
                 "isDone": isdone,
                 "hasError": haserror,
-                "startTime": int(time.time())
+                "startTime": int(time.time()),
+                "totalFrames": totalframes,
+                "currentFrame": currframe
             }
 
         return
@@ -90,10 +96,13 @@ class sharedbgenData(Structure):
     ]
 
 class bgenWorker():
-    def __init__(self,isdone,haserror,folderpath,videofilename,skip_frames,blur_size):
+    def __init__(self,isdone,haserror,totalframes,currframe,folderpath,videofilename,skip_frames,blur_size):
         self.isdone = isdone
         self.haserror = haserror
         self.folderpath = folderpath
+        
+        self.totalframes = totalframes
+        self.currframe = currframe
 
         self.videopath = os.path.normpath(f'{folderpath}/{videofilename}')
         self.imgpath = os.path.normpath(f'{folderpath}/out.png')
@@ -118,7 +127,9 @@ class bgenWorker():
         try:
             if length > MAX_FRAMES_RENDER:
                 length = MAX_FRAMES_RENDER
-
+            
+            self.totalframes.value = length
+            
             # Get width and height of video stream
             w = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
@@ -154,7 +165,9 @@ class bgenWorker():
                 if frame_num % self.skip_frames != 0:
                     # just skip it
                     continue
-
+                
+                self.currframe.value = frame_num
+                
                 curr_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY) 
 
                 curr_pts, status, err = cv.calcOpticalFlowPyrLK(prev_gray, curr_gray, prev_pts, None) 

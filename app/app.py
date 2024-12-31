@@ -190,9 +190,30 @@ def imgview():
     
     """
     uuid = request.cookies.get('UUID')
+    
+    global birdManager
+    
+    try: 
+        workerref = birdManager.allWorkers[uuid]
+        error = workerref['hasError'].value
+        done = workerref['isDone'].value
+        duration = int(time.time()) - workerref['startTime']
+        totalframes = workerref['totalFrames'].value
+        currframe = workerref['currentFrame'].value
+    except KeyError:
+        error = None
+        done = None
+        duration = 0
+        totalframes=0
+        currframe=0
 
     return render_template('imgview.html',
-        preview_img=f"/static/user/{uuid}/out.png?{int(time.time())}")
+        preview_img=f"/static/user/{uuid}/out.png?{int(time.time())}",
+        isdone=done,
+        error=error,
+        duration=duration,
+        totalframes=totalframes,
+        currframe=currframe)
 
 
 # NON-PAGE HELPERS: do other tasks in the program =============================
