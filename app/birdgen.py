@@ -4,6 +4,7 @@ from multiprocessing import Process, shared_memory, Value, Array
 from ctypes import Structure, c_int32, c_bool
 import os
 import time
+from traceback import format_exc
 
 MAX_FRAMES_RENDER = 500
 DEBUG_CV_IMSHOW = False
@@ -233,8 +234,9 @@ class bgenWorker():
                 # save to the out image
                 cv.imwrite(self.imgpath,background)
         
-        except:
-            print("Error generating")
+        except Exception as e:
+            print("Error generating image")
+            print(format_exc())
             self.haserror.value = True
         
         if DEBUG_CV_IMSHOW:

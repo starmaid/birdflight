@@ -3,5 +3,5 @@
 ```
 docker build -t birdflight:latest .
 
-docker run birdflight:latest
+docker compose up
 ```
