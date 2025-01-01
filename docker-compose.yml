@@ -7,3 +7,6 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 5050:80
+    volumes:
+      - /data/birdflight/user:/app/app/static/user
+
