@@ -249,6 +249,9 @@ class bgenWorker():
                 
                 # save to the out image
                 cv.imwrite(self.imgpath,background)
+            
+            # also archive a copy when done
+            cv.imwrite(f'{self.imgpath}_{int(time.time())}.png',background) 
         
         except Exception as e:
             print("Error generating image")
