@@ -113,6 +113,7 @@ def getUserFolder(request):
 
         meta['LAST_REQUEST'] = int(time.time())
         meta['NUM_REQUESTS'] = 1
+        meta['LIFETIME_UPLOAD'] = 0
 
         with open(meta_filepath,'w') as fp:
             json.dump(meta,fp)
@@ -130,6 +131,8 @@ def upload():
     (uuid, filepath) = getUserFolder(request)
 
     meta_filepath = os.path.normpath(f'{filepath}/meta.json')
+    with open(meta_filepath,'r') as fp:
+        meta = json.load(fp)
 
     videoname = birdgen.getInputFile(filepath)
     
@@ -142,12 +145,17 @@ def upload():
     if 'videofile' in request.files.keys() and request.files['videofile'].filename != '':
         
         newfile = request.files['videofile']
+        
+        file_length = newfile.seek(0, os.SEEK_END)
+        newfile.seek(0, os.SEEK_SET)
 
         #print(newfile)
 
         # this is always zero??....
-        if newfile.content_length > 10000000:
-            message = "File too large. Try cropping or downscaling the video first."
+        if file_length > 50000000:
+            message = "File larger than 50 MB. Try cropping or downscaling the video first. What am I, a video hosting site?"
+        elif meta['LIFETIME_UPLOAD'] > 1000000000:
+            message = "You have uploaded more than 1GB of video. Please chill out and dm me, I'll take you out of timeout."
         else:
             user_filename = newfile.filename
             extension = user_filename.split('.')[-1]
@@ -156,12 +164,16 @@ def upload():
                 os.path.normpath(f'./static/user/{uuid}/in.{extension}'))
 
             fcontent = newfile.read()
+            
+            meta['LIFETIME_UPLOAD'] += file_length
+            with open(meta_filepath,'w') as fp:
+                json.dump(meta,fp)
 
             with open(newpath,'wb') as f:
                 # Sanitize CR out
                 f.write(fcontent)
             
-            message = f"successfully uploaded {newfile.filename} ({newfile.content_length} bytes)"
+            message = f"successfully uploaded {newfile.filename} ({file_length} bytes)"
         
     else:
         message = "unable to process file"
