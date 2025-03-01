@@ -7,7 +7,8 @@
 
 <body>
     <img src="{{ preview_img }}">
-    <p>Done: {{ isdone }} Error: {{ error }} Duration: {{ duration }}s Frames: {{ currframe }}/{{ totalframes }}</p>
+    <p>Done: {{ isdone }} Errored: {{ error }} Duration: {{ duration }}s Frames: {{ currframe }}/{{ totalframes }}</p>
+    <p>{{ errorString }}</p>
     <script>
         function refresh() {
             //update src attribute with a cache buster query

@@ -1,12 +1,13 @@
 import cv2 as cv
 import numpy as np
 from multiprocessing import Process, shared_memory, Value, Array
-from ctypes import Structure, c_int32, c_bool
+from ctypes import Structure, c_int32, c_bool, c_char_p
 import os
 import time
 from traceback import format_exc
 
 MAX_FRAMES_RENDER = 500
+SHARED_ERROR_STRING_LEN = 200
 DEBUG_CV_IMSHOW = False
 
 # Spawn processes to work on images
@@ -22,6 +23,7 @@ class bgenManager():
                 "handle": None,
                 "isDone": False,
                 "hasError": False,
+                "errorString": "",
                 "startTime": 0,
                 "totalFrames": 0,
                 "currentFrame": 0
@@ -41,10 +43,13 @@ class bgenManager():
         haserror = Value(c_bool,False)
         totalframes = Value(c_int32,0)
         currframe = Value(c_int32,0)
+        #errorString = Value(c_char_p, bytes("x"*SHARED_ERROR_STRING_LEN, 'ascii'))
+        errorString = Array('c', SHARED_ERROR_STRING_LEN)
+        errorString.value = b"no error"
         
         worker_videoname = getInputFile(worker_filepath)
 
-        w = bgenWorker(isdone,haserror,totalframes,currframe,worker_filepath,worker_videoname,param_skipframes,param_bluramount)
+        w = bgenWorker(isdone,haserror,totalframes,currframe,errorString,worker_filepath,worker_videoname,param_skipframes,param_bluramount)
         
         # after this point, the class is copied to the new process. Only values with shared memory can be accessed
         bgenworkerproc = Process(target=w.start, args=(), daemon=True)
@@ -54,6 +59,7 @@ class bgenManager():
                 "handle": bgenworkerproc,
                 "isDone": isdone,
                 "hasError": haserror,
+                "errorString": errorString,
                 "startTime": int(time.time()),
                 "totalFrames": totalframes,
                 "currentFrame": currframe
@@ -96,9 +102,10 @@ class sharedbgenData(Structure):
     ]
 
 class bgenWorker():
-    def __init__(self,isdone,haserror,totalframes,currframe,folderpath,videofilename,skip_frames,blur_size):
+    def __init__(self,isdone,haserror,totalframes,currframe,errorString,folderpath,videofilename,skip_frames,blur_size):
         self.isdone = isdone
         self.haserror = haserror
+        self.errorString = errorString
         self.folderpath = folderpath
         
         self.totalframes = totalframes
@@ -129,6 +136,8 @@ class bgenWorker():
                 length = MAX_FRAMES_RENDER
             
             self.totalframes.value = length
+            
+            success = False
             
             # Get width and height of video stream
             w = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
@@ -249,13 +258,22 @@ class bgenWorker():
                 
                 # save to the out image
                 cv.imwrite(self.imgpath,background)
+                success = True
             
-            # also archive a copy when done
-            cv.imwrite(f'{self.imgpath}_{int(time.time())}.png',background) 
+            if success:
+                # also archive a copy when done
+                cv.imwrite(f'{self.imgpath}_{int(time.time())}.png',background) 
         
         except Exception as e:
             print("Error generating image")
             print(format_exc())
+            try:
+                err_string = f"Total Frames: {length} Frame on Error: {frame_num} Stabilization points: {len(curr_pts)} Transform matrix: {m}"
+                print(err_string)
+                self.errorString.value = bytes(err_string[:SHARED_ERROR_STRING_LEN],'ascii')
+            except:
+                print("Error printing info string")
+                print(format_exc())
             self.haserror.value = True
         
         if DEBUG_CV_IMSHOW:
