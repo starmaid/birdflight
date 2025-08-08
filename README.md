@@ -4,6 +4,13 @@
 
 This program is made to turn videos of birds into layered flight trail images.
 
+![](./docs/me_3.png)
+
+![](./docs/me_4.png)
+
+![](./docs/me_5.png)
+
+
 ## Try it out
 
 The site is currently hosted on my personal server. Message me privately for the domain.

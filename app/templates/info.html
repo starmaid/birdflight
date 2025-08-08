@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block pageinfo %}
-<p class="pageinfo text">Info page. Shows current user's details.</p>
+<p class="pageinfo text">Info page.</p>
 {% endblock %}
 
 {% block left %}
@@ -21,5 +21,8 @@
   <h1>Gallery</h1>
   <a href="{{ url_for('static', filename='example_1.png') }}"><img src="{{ url_for('static', filename='example_1.png') }}" class="imggallery"/></a>
   <a href="{{ url_for('static', filename='example_2.png') }}"><img src="{{ url_for('static', filename='example_2.png') }}" class="imggallery"/></a>
+  <a href="{{ url_for('static', filename='example_2.png') }}"><img src="{{ url_for('static', filename='me_3.png') }}" class="imggallery"/></a>
+  <a href="{{ url_for('static', filename='example_2.png') }}"><img src="{{ url_for('static', filename='me_4.png') }}" class="imggallery"/></a>
+  <a href="{{ url_for('static', filename='example_2.png') }}"><img src="{{ url_for('static', filename='me_5.png') }}" class="imggallery"/></a>
 </div>
 {% endblock %}
