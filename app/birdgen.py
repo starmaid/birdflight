@@ -6,9 +6,11 @@ import os
 import time
 from traceback import format_exc
 
+import pickle
+
 MAX_FRAMES_RENDER = 500
 SHARED_ERROR_STRING_LEN = 200
-DEBUG_CV_IMSHOW = False
+DEBUG_CV_IMSHOW = True
 
 # Spawn processes to work on images
 # give arguments with folders and filenames etc
@@ -116,159 +118,194 @@ class bgenWorker():
 
         self.skip_frames = skip_frames
         self.blur_size = blur_size
+
+        self.stabilized_frames = None
+
         return
 
-    def start(self):
 
+    def start(self):
         # try to open the file first
-        try:
-            cap = cv.VideoCapture(self.videopath)
-            length = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
-        except:
-            print("unable to open video")
-            print(format_exc())
-            self.haserror.value = True
-            self.isdone.value = True
+        ret = self.openfile()
+        if not ret:
             return
-        
-        try:
-            if length > MAX_FRAMES_RENDER:
-                length = MAX_FRAMES_RENDER
             
-            self.totalframes.value = length
+        self.stabilize()
+        self.getAverageFrame()
+        self.layering()
+
+    def stabilize(self):
+        """stabilize and preprocess the video"""
+
+        self.stabilized_frames = np.zeros((self.num_frames_after_skips, self._h, self._w, 3), np.uint8)
+
+        current_frame_num = 0
+        for frame_num in range(self._length):
+            ret, frame = self._cap.read()
+            if not ret:
+                # return with error
+                self.haserror.value = True
+                break
+            
+            if frame_num == 0:
+                # do first frame stuff
+                # tracking stuff
+                prev_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+                prev_pts = cv.goodFeaturesToTrack(prev_gray,
+                                            maxCorners=200,
+                                            qualityLevel=0.01,
+                                            minDistance=30.0,
+                                            blockSize=3)
+            
+            if frame_num % self.skip_frames != 0:
+                # just skip it
+                continue
+            
+            curr_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY) 
+
+            curr_pts, status, err = cv.calcOpticalFlowPyrLK(prev_gray, curr_gray, prev_pts, None) 
+            
+            # Filter only valid points
+            idx = np.where(status==1)[0]
+            prev_pts = prev_pts[idx]
+            curr_pts = curr_pts[idx]
+            
+            #Find transformation matrix            
+            m, ret = cv.estimateAffinePartial2D(np.array(curr_pts), np.array(prev_pts))
+
+            # Extract traslation
+            dx = m[0,2]
+            dy = m[1,2]
+            
+            # Extract rotation angle
+            da = np.arctan2(m[1,0], m[0,0])
+
+            m = np.zeros((2,3), np.float32)
+            m[0,0] = np.cos(da)
+            m[0,1] = -np.sin(da)
+            m[1,0] = np.sin(da)
+            m[1,1] = np.cos(da)
+            m[0,2] = dx
+            m[1,2] = dy
+
+            # Apply affine wrapping to the given frame
+            frame_stabilized = cv.warpAffine(frame, m, (self._w,self._h))
+
+            self.stabilized_frames[current_frame_num] = frame_stabilized
+
+            prev_frame = frame_stabilized
+            prev_gray = cv.cvtColor(prev_frame,cv.COLOR_BGR2GRAY)
+            prev_pts = cv.goodFeaturesToTrack(prev_gray,
+                                            maxCorners=200,
+                                            qualityLevel=0.01,
+                                            minDistance=30.0,
+                                            blockSize=3)
+            current_frame_num += 1
+
+        
+
+    def layering(self):
+        try:
+            self.totalframes.value = self._length
             
             success = False
-            
-            # Get width and height of video stream
-            w = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
-            h = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+            frame_num = 0
 
-            for frame_num in range(length):
-                ret, frame = cap.read()
-                if not ret:
-                    # return with error
-                    self.haserror.value = True
-                    break
-                
+            for frame in self.stabilized_frames:
+                print(frame_num)
                 if frame_num == 0:
                     # do first frame stuff
                     prev_frame = frame
-                    prev_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-                    prev_pts = cv.goodFeaturesToTrack(prev_gray,
-                                                maxCorners=200,
-                                                qualityLevel=0.01,
-                                                minDistance=30.0,
-                                                blockSize=3)
 
-                    prev_thresh = np.zeros((h,w),dtype=np.uint8)
+                    prev_thresh = np.zeros((self._h,self._w),dtype=np.uint8)
                     prev_thresh_sub = prev_thresh
                     prev2_thresh = prev_thresh
                     prev2_thres_sub = prev_thresh
 
-                    background = cv.cvtColor(frame, cv.COLOR_BGR2BGRA)
-                    alpha_background = background[:,:,3] / 255.0
-                    
+                    composite = cv.cvtColor(frame, cv.COLOR_BGR2BGRA)
+                    alpha_composite = composite[:,:,3] / 255.0
+
+                    frame_num = 1
+
                     # skip everything and go to next frame
                     continue
 
-                if frame_num % self.skip_frames != 0:
-                    # just skip it
-                    continue
                 
-                # frames are zero indexed duh
-                self.currframe.value = frame_num + 1
-                
-                curr_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY) 
+                frame_stabilized = frame
 
-                curr_pts, status, err = cv.calcOpticalFlowPyrLK(prev_gray, curr_gray, prev_pts, None) 
-                
-                # Filter only valid points
-                idx = np.where(status==1)[0]
-                prev_pts = prev_pts[idx]
-                curr_pts = curr_pts[idx]
-                
-                #Find transformation matrix            
-                m, ret = cv.estimateAffinePartial2D(np.array(curr_pts), np.array(prev_pts))
-
-                # Extract traslation
-                dx = m[0,2]
-                dy = m[1,2]
-                
-                # Extract rotation angle
-                da = np.arctan2(m[1,0], m[0,0])
-
-                m = np.zeros((2,3), np.float32)
-                m[0,0] = np.cos(da)
-                m[0,1] = -np.sin(da)
-                m[1,0] = np.sin(da)
-                m[1,1] = np.cos(da)
-                m[0,2] = dx
-                m[1,2] = dy
-
-                # Apply affine wrapping to the given frame
-                frame_stabilized = cv.warpAffine(frame, m, (w,h))
-
-                # calculate difference
+                # calculate difference from previous frame to current frame 
                 diff = cv.absdiff(frame_stabilized,prev_frame)
-                ret,thresh = cv.threshold(diff,50,255,cv.THRESH_BINARY)
-                thresh = cv.cvtColor(thresh, cv.COLOR_BGR2GRAY)
+                # TODO: update this threshold operation
+                ret,thresh_prevframe = cv.threshold(diff,50,255,cv.THRESH_BINARY)
+                ret,thresh_prevframe = cv.threshold(thresh_prevframe, 10, 255, cv.THRESH_BINARY)
+
+
+                # calculate difference between current frame and first frame
+                #diff = cv.absdiff(frame_stabilized,first_frame)
+                #ret,thresh = cv.threshold(diff,50,255,cv.THRESH_BINARY)
+
+                # convert to grayscale 
+                thresh_prevframe_grayscale = cv.cvtColor(thresh_prevframe, cv.COLOR_BGR2GRAY)
+                ret,thresh_prevframe_grayscale = cv.threshold(thresh_prevframe_grayscale, 10, 255, cv.THRESH_BINARY)
 
                 # subtract previous mask from this one
-                thresh_sub = cv.subtract(thresh,prev_thresh)
+                thresh_sub = cv.subtract(thresh_prevframe_grayscale,prev_thresh)
                 thresh_sub = cv.subtract(thresh_sub,prev2_thresh) 
+
+                # Create a mask based on the difference from each pixel's average color
+                background_diff = cv.absdiff(frame_stabilized, self._background)
+                # TODO: update this threshold, make it a variable
+                ret,thresh_background = cv.threshold(background_diff,50,255,cv.THRESH_BINARY) #cv.THRESH_BINARY_INV)
+                thresh_background_grayscale = cv.cvtColor(thresh_background, cv.COLOR_BGR2GRAY)
+                ret,thresh_background_grayscale = cv.threshold(thresh_background_grayscale, 20, 255, cv.THRESH_BINARY)
+                combined_thresh = cv.add(thresh_sub, thresh_background_grayscale)
 
                 # set the mask as the alpha
                 foreground = cv.cvtColor(frame_stabilized, cv.COLOR_BGR2BGRA)
-                foreground[:,:,3] = thresh_sub
+                foreground[:,:,3] = combined_thresh
 
                 alpha_foreground = foreground[:,:,3] / 255.0
 
                 # set adjusted colors
                 for color in range(0, 3):
-                    background[:,:,color] = alpha_foreground * foreground[:,:,color] + \
-                        alpha_background * background[:,:,color] * (1 - alpha_foreground)
+                    composite[:,:,color] = alpha_foreground * foreground[:,:,color] + \
+                        alpha_composite * composite[:,:,color] * (1 - alpha_foreground)
 
                 # set adjusted alpha and denormalize back to 0-255
-                background[:,:,3] = (1 - (1 - alpha_foreground) * (1 - alpha_background)) * 255
+                composite[:,:,3] = (1 - (1 - alpha_foreground) * (1 - alpha_composite)) * 255
 
                 
                 # do last stuff
 
                 #save curent values as prevs
                 prev_frame = frame_stabilized
-                prev_gray = cv.cvtColor(prev_frame,cv.COLOR_BGR2GRAY)
-                prev_pts = cv.goodFeaturesToTrack(prev_gray,
-                                                maxCorners=200,
-                                                qualityLevel=0.01,
-                                                minDistance=30.0,
-                                                blockSize=3)
                 prev2_thresh = prev_thresh
                 prev2_thres_sub = prev_thresh_sub
-                prev_thresh = thresh
+                prev_thresh = thresh_prevframe_grayscale
                 prev_thresh_sub = thresh_sub
 
                 # only show the opencv window if this mode is on.
                 if DEBUG_CV_IMSHOW:
-                    cv.imshow('frame',background)
-                    frame_num += 1
+                    cv.imshow('frame',combined_thresh)
                     if cv.waitKey(1) & 0xFF == ord('q'):
                         break
                     elif cv.waitKey(1) & 0xFF == ord('w'):
                         time.sleep(5)
                 
                 # save to the out image
-                cv.imwrite(self.imgpath,background)
+                cv.imwrite(self.imgpath,composite)
                 success = True
+                frame_num += 1
             
             if success:
                 # also archive a copy when done
-                cv.imwrite(f'{self.imgpath}_{int(time.time())}.png',background) 
+                cv.imwrite(f'{self.imgpath}_{int(time.time())}.png',composite) 
         
         except Exception as e:
             print("Error generating image")
             print(format_exc())
             try:
-                err_string = f"Total Frames: {length} Frame on Error: {frame_num} Stabilization points: {len(curr_pts)} Transform matrix: {m}"
+                err_string = f"Total Frames: {self._length} Frame on Error: {frame_num} Stabilization points: {len(curr_pts)} Transform matrix: {m}"
                 print(err_string)
                 self.errorString.value = bytes(err_string[:SHARED_ERROR_STRING_LEN],'ascii')
             except:
@@ -279,11 +316,45 @@ class bgenWorker():
         if DEBUG_CV_IMSHOW:
             cv.destroyAllWindows()
         
-        cap.release()
+        self._cap.release()
         self.isdone.value = True
 
         return
 
+    def openfile(self):
+        # try to open the file first
+        try:
+            self._cap = cv.VideoCapture(self.videopath)
+            self._length = int(self._cap.get(cv.CAP_PROP_FRAME_COUNT))
+        except:
+            print("unable to open video")
+            print(format_exc())
+            self.haserror.value = True
+            self.isdone.value = True
+            return(False)
+        
+        if self._length > MAX_FRAMES_RENDER:
+            self._length = MAX_FRAMES_RENDER
+
+        self.num_frames_after_skips = int(self._length / self.skip_frames) + 1
+
+        # Get width and height of video stream
+        self._w = int(self._cap.get(cv.CAP_PROP_FRAME_WIDTH))
+        self._h = int(self._cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+    
+        return(True)
+
+    def getAverageFrame(self):
+        frame_contianer = np.zeros((self._h,self._w,3),dtype=np.float32)
+
+        for frame in self.stabilized_frames:
+            frame_contianer += np.multiply(frame, (1/self.num_frames_after_skips))
+        
+        frame_output = np.uint8(frame_contianer)
+        #frame_output = cv.cvtColor(frame_output, cv.COLOR_RGB2BGR)
+        self._background = frame_output
+        return(frame_output)
+            
 
 def getInputFile(folderpath):
     for fname in os.listdir(folderpath):
@@ -292,26 +363,85 @@ def getInputFile(folderpath):
             return(fname)
     return(None)
 
-# TEST PROGRAM
-if __name__ == "__main__":
+
+
+def test4():
+    folder1 = "../test_video"
+    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),None,folder1,getInputFile(folder1),10,0)
+    w.openfile()
+    w.stabilized_frames = np.load("stabilized_zach.npy")
+    w.getAverageFrame()
+    w.layering()
+
+def test3():
+    folder1 = "../test_video"
+    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),None,folder1,getInputFile(folder1),10,0)
+    w.openfile()
+    w.stabilized_frames = np.load("stabilized_zach.npy")
+    w.getAverageFrame()
+
+
+    while True:
+        cv.imshow("frame", w._background)
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
+        elif cv.waitKey(1) & 0xFF == ord('w'):
+            time.sleep(5)
+        time.sleep(0.1)
+
+    cv.destroyAllWindows()
+
+    #w.layering()
+
+
+def test2():
+    folder1 = "../test_video"
+    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),None,folder1,getInputFile(folder1),10,0)
+    w.openfile()
+    #print("file opened")
+    w.stabilize()
+    print("Stabilized")
+
+    np.save("stabilized_zach", w.stabilized_frames)
+    return
+    w.stabilized_frames = np.load("stabilized_zach.npy")
+    f = w.getAverageFrame()
+
+
+    while True:
+        cv.imshow("frame", f)
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
+        elif cv.waitKey(1) & 0xFF == ord('w'):
+            time.sleep(5)
+        time.sleep(0.1)
+
+    cv.destroyAllWindows()
+
+
+def test1():
     m = bgenManager()
 
-    folder1 = "/Users/nmass/Software/birdflight/birdflight/app/static/user/710f861f-a838-4546-8123-458ed89496b9"
-    folder2 = "/Users/nmass/Software/birdflight/birdflight/app/static/user/c9344ae2-1b75-4ec7-8a9a-64d8141efc8c"
+    folder1 = "../test_video"
+    #folder2 = "/Users/nmass/Software/birdflight/birdflight/app/static/user/c9344ae2-1b75-4ec7-8a9a-64d8141efc8c"
 
-    m.startWorker("asdklfjaslkdfj",folder1,5,0)
+    m.startWorker("asdklfjaslkdfj",folder1,10,0)
 
-    for i in range(5):
+    for i in range(10):
         time.sleep(1)
         print(m.allWorkers)
 
-    m.startWorker("sadfs2222222",folder2,5,10)
+    #m.startWorker("sadfs2222222",folder2,5,10)
     
-    for i in range(20):
-        time.sleep(1)
-        print(m.allWorkers)
+    #for i in range(20):
+    #    time.sleep(1)
+    #    print(m.allWorkers)
 
     m.cullWorkers()
 
     print(m.allWorkers)
 
+
+# TEST PROGRAM
+if __name__ == "__main__":
+    test4()
