@@ -258,7 +258,19 @@ class bgenWorker():
                 ret,thresh_background = cv.threshold(background_diff,50,255,cv.THRESH_BINARY) #cv.THRESH_BINARY_INV)
                 thresh_background_grayscale = cv.cvtColor(thresh_background, cv.COLOR_BGR2GRAY)
                 ret,thresh_background_grayscale = cv.threshold(thresh_background_grayscale, 20, 255, cv.THRESH_BINARY)
+                
+                # just ad them together
                 combined_thresh = cv.add(thresh_sub, thresh_background_grayscale)
+
+
+                # remove speckles
+                # this doesnt work
+                #se1 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5,5))
+                #se2 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3,3))
+                #mask = cv.morphologyEx(combined_thresh, cv.MORPH_CLOSE, se1)
+                #mask = cv.morphologyEx(mask, cv.MORPH_OPEN, se2)
+
+
 
                 # set the mask as the alpha
                 foreground = cv.cvtColor(frame_stabilized, cv.COLOR_BGR2BGRA)
