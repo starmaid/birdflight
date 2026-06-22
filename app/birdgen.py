@@ -104,7 +104,7 @@ class sharedbgenData(Structure):
     ]
 
 class bgenWorker():
-    def __init__(self,isdone,haserror,totalframes,currframe,errorString,folderpath,videofilename,skip_frames,blur_size):
+    def __init__(self,isdone,haserror,totalframes,currframe,errorString,folderpath,videofilename,skip_frames,img_tweak_params):
         self.isdone = isdone
         self.haserror = haserror
         self.errorString = errorString
@@ -117,12 +117,41 @@ class bgenWorker():
         self.imgpath = os.path.normpath(f'{folderpath}/out.png')
 
         self.skip_frames = skip_frames
-        self.blur_size = blur_size
+
+        self.frame_diff_threshold = 50
+        self.background_diff_threshold = 50
+        self.denoise_radius = 4
+
+        self.img_tweak_params = img_tweak_params
+        """
+        img_tweak_params = {"frame_diff_threshold": 50,
+                        "background_diff_threshold": 50,
+                        "denoise_radius": 4}
+        """
+
+        if "frame_diff_threshold" in img_tweak_params.keys():
+            self.frame_diff_threshold = self.clipTo8bit(img_tweak_params["frame_diff_threshold"])
+
+        if "background_diff_threshold" in img_tweak_params.keys():
+            self.background_diff_threshold = self.clipTo8bit(img_tweak_params["background_diff_threshold"])
+
+        if "denoise_radius" in img_tweak_params.keys():
+            self.denoise_radius = self.clipTo8bit(img_tweak_params["denoise_radius"], False)
+
 
         self.stabilized_frames = None
 
         return
 
+    def clipTo8bit(self, input, allowzero = True):
+        lowerlimit = 0
+        if not allowzero:
+            lowerlimit = 1
+        if input < lowerlimit:
+            return lowerlimit
+        if input > 255:
+            return 255
+        return int(input)
 
     def start(self):
         # try to open the file first
@@ -137,9 +166,8 @@ class bgenWorker():
     def stabilize(self):
         """stabilize and preprocess the video"""
 
-        self.stabilized_frames = np.zeros((self.num_frames_after_skips, self._h, self._w, 3), np.uint8)
+        self.stabilized_frames = np.zeros((self._length, self._h, self._w, 3), np.uint8)
 
-        current_frame_num = 0
         for frame_num in range(self._length):
             ret, frame = self._cap.read()
             if not ret:
@@ -156,10 +184,6 @@ class bgenWorker():
                                             qualityLevel=0.01,
                                             minDistance=30.0,
                                             blockSize=3)
-            
-            if frame_num % self.skip_frames != 0:
-                # just skip it
-                continue
             
             curr_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY) 
 
@@ -191,7 +215,7 @@ class bgenWorker():
             # Apply affine wrapping to the given frame
             frame_stabilized = cv.warpAffine(frame, m, (self._w,self._h))
 
-            self.stabilized_frames[current_frame_num] = frame_stabilized
+            self.stabilized_frames[frame_num] = frame_stabilized
 
             prev_frame = frame_stabilized
             prev_gray = cv.cvtColor(prev_frame,cv.COLOR_BGR2GRAY)
@@ -200,7 +224,6 @@ class bgenWorker():
                                             qualityLevel=0.01,
                                             minDistance=30.0,
                                             blockSize=3)
-            current_frame_num += 1
 
         
 
@@ -220,7 +243,6 @@ class bgenWorker():
                     prev_thresh = np.zeros((self._h,self._w),dtype=np.uint8)
                     prev_thresh_sub = prev_thresh
                     prev2_thresh = prev_thresh
-                    prev2_thres_sub = prev_thresh
 
                     composite = cv.cvtColor(frame, cv.COLOR_BGR2BGRA)
                     alpha_composite = composite[:,:,3] / 255.0
@@ -230,51 +252,47 @@ class bgenWorker():
                     # skip everything and go to next frame
                     continue
 
+                if frame_num % self.skip_frames != 0:
+                    # just skip it
+                    frame_num += 1
+                    continue
                 
                 frame_stabilized = frame
 
                 # calculate difference from previous frame to current frame 
                 diff = cv.absdiff(frame_stabilized,prev_frame)
-                # TODO: update this threshold operation
-                ret,thresh_prevframe = cv.threshold(diff,50,255,cv.THRESH_BINARY)
-                ret,thresh_prevframe = cv.threshold(thresh_prevframe, 10, 255, cv.THRESH_BINARY)
-
-
-                # calculate difference between current frame and first frame
-                #diff = cv.absdiff(frame_stabilized,first_frame)
-                #ret,thresh = cv.threshold(diff,50,255,cv.THRESH_BINARY)
+                ret,thresh_prevframe = cv.threshold(diff,self.frame_diff_threshold,255,cv.THRESH_BINARY)
 
                 # convert to grayscale 
                 thresh_prevframe_grayscale = cv.cvtColor(thresh_prevframe, cv.COLOR_BGR2GRAY)
                 ret,thresh_prevframe_grayscale = cv.threshold(thresh_prevframe_grayscale, 10, 255, cv.THRESH_BINARY)
 
-                # subtract previous mask from this one
+                # subtract previous two masks from this one
                 thresh_sub = cv.subtract(thresh_prevframe_grayscale,prev_thresh)
                 thresh_sub = cv.subtract(thresh_sub,prev2_thresh) 
 
                 # Create a mask based on the difference from each pixel's average color
                 background_diff = cv.absdiff(frame_stabilized, self._background)
-                # TODO: update this threshold, make it a variable
-                ret,thresh_background = cv.threshold(background_diff,50,255,cv.THRESH_BINARY) #cv.THRESH_BINARY_INV)
+                ret,thresh_background = cv.threshold(background_diff,self.background_diff_threshold,255,cv.THRESH_BINARY) #cv.THRESH_BINARY_INV)
                 thresh_background_grayscale = cv.cvtColor(thresh_background, cv.COLOR_BGR2GRAY)
-                ret,thresh_background_grayscale = cv.threshold(thresh_background_grayscale, 20, 255, cv.THRESH_BINARY)
+                ret,thresh_background_grayscale = cv.threshold(thresh_background_grayscale, 10, 255, cv.THRESH_BINARY)
                 
                 # just ad them together
                 combined_thresh = cv.add(thresh_sub, thresh_background_grayscale)
 
 
                 # remove speckles
-                # this doesnt work
-                #se1 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5,5))
-                #se2 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3,3))
-                #mask = cv.morphologyEx(combined_thresh, cv.MORPH_CLOSE, se1)
-                #mask = cv.morphologyEx(mask, cv.MORPH_OPEN, se2)
-
-
+                if self.denoise_radius > 1:
+                    se1 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (self.denoise_radius,self.denoise_radius))
+                    se2 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (self.denoise_radius,self.denoise_radius))
+                    mask = cv.morphologyEx(combined_thresh, cv.MORPH_OPEN, se2)
+                    mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, se1)
+                else:
+                    mask = combined_thresh
 
                 # set the mask as the alpha
                 foreground = cv.cvtColor(frame_stabilized, cv.COLOR_BGR2BGRA)
-                foreground[:,:,3] = combined_thresh
+                foreground[:,:,3] = mask
 
                 alpha_foreground = foreground[:,:,3] / 255.0
 
@@ -292,16 +310,16 @@ class bgenWorker():
                 #save curent values as prevs
                 prev_frame = frame_stabilized
                 prev2_thresh = prev_thresh
-                prev2_thres_sub = prev_thresh_sub
                 prev_thresh = thresh_prevframe_grayscale
                 prev_thresh_sub = thresh_sub
 
                 # only show the opencv window if this mode is on.
                 if DEBUG_CV_IMSHOW:
-                    cv.imshow('frame',combined_thresh)
-                    if cv.waitKey(1) & 0xFF == ord('q'):
+                    cv.imshow('frame',mask)
+                    k = cv.waitKey(1) & 0xFF
+                    if k == ord('q'):
                         break
-                    elif cv.waitKey(1) & 0xFF == ord('w'):
+                    elif k == ord('w'):
                         time.sleep(5)
                 
                 # save to the out image
@@ -317,7 +335,7 @@ class bgenWorker():
             print("Error generating image")
             print(format_exc())
             try:
-                err_string = f"Total Frames: {self._length} Frame on Error: {frame_num} Stabilization points: {len(curr_pts)} Transform matrix: {m}"
+                err_string = f"Total Frames: {self._length} Frame on Error: {frame_num}"
                 print(err_string)
                 self.errorString.value = bytes(err_string[:SHARED_ERROR_STRING_LEN],'ascii')
             except:
@@ -356,16 +374,16 @@ class bgenWorker():
     
         return(True)
 
-    def getAverageFrame(self):
-        frame_contianer = np.zeros((self._h,self._w,3),dtype=np.float32)
 
-        for frame in self.stabilized_frames:
-            frame_contianer += np.multiply(frame, (1/self.num_frames_after_skips))
-        
-        frame_output = np.uint8(frame_contianer)
-        #frame_output = cv.cvtColor(frame_output, cv.COLOR_RGB2BGR)
+    def getAverageFrame(self):
+        frame_output = np.mean(
+            self.stabilized_frames,
+            axis=0,
+            dtype=np.float32
+        ).astype(np.uint8)
+
         self._background = frame_output
-        return(frame_output)
+        return frame_output
             
 
 def getInputFile(folderpath):
@@ -379,17 +397,23 @@ def getInputFile(folderpath):
 
 def test4():
     folder1 = "../test_video"
-    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),None,folder1,getInputFile(folder1),10,0)
+    img_tweak_params = {"frame_diff_threshold": 250,
+                        "background_diff_threshold": 150,
+                        "denoise_radius": 0}
+    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),Array('c', SHARED_ERROR_STRING_LEN),folder1,getInputFile(folder1),4,img_tweak_params)
     w.openfile()
-    w.stabilized_frames = np.load("stabilized_zach.npy")
+    w.stabilized_frames = np.load("stabilized_bird_10.npy")
     w.getAverageFrame()
     w.layering()
 
 def test3():
     folder1 = "../test_video"
-    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),None,folder1,getInputFile(folder1),10,0)
+    img_tweak_params = {"frame_diff_threshold": 50,
+                        "background_diff_threshold": 50,
+                        "denoise_radius": 4}
+    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),Array('c', SHARED_ERROR_STRING_LEN),folder1,getInputFile(folder1),10,{})
     w.openfile()
-    w.stabilized_frames = np.load("stabilized_zach.npy")
+    w.stabilized_frames = np.load("stabilized_bird_10.npy")
     w.getAverageFrame()
 
 
@@ -403,18 +427,15 @@ def test3():
 
     cv.destroyAllWindows()
 
-    #w.layering()
-
-
 def test2():
     folder1 = "../test_video"
-    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),None,folder1,getInputFile(folder1),10,0)
+    w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),None,folder1,getInputFile(folder1),10,{})
     w.openfile()
     #print("file opened")
     w.stabilize()
     print("Stabilized")
 
-    np.save("stabilized_zach", w.stabilized_frames)
+    np.save("stabilized_bird_10", w.stabilized_frames)
     return
     w.stabilized_frames = np.load("stabilized_zach.npy")
     f = w.getAverageFrame()
