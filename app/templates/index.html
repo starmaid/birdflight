@@ -23,9 +23,17 @@
       <div id="range1"></div>
       <input type="range" min="1" max="15" value="1" class="slider" id="range1slider" name="range1slider">
       <br>
-      <label for="range2">Frame Blurring</label>
+      <label for="range2">Previous Frame Pixel Difference Threshold</label>
       <div id="range2"></div>
-      <input type="range" min="0" max="10" value="5" class="slider" id="range2slider" name="range2slider">
+      <input type="range" min="0" max="255" value="50" class="slider" id="range2slider" name="range2slider">
+      <br>
+      <label for="range3">Background Pixel Difference Threshold</label>
+      <div id="range3"></div>
+      <input type="range" min="0" max="255" value="50" class="slider" id="range3slider" name="range3slider">
+      <br>
+      <label for="range4">Mask Despeckle Radius (Pixels)</label>
+      <div id="range4"></div>
+      <input type="range" min="0" max="20" value="2" class="slider" id="range4slider" name="range4slider">
       <br>
       <button type="submit">Generate New Image</button>
     </form>

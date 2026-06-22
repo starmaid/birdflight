@@ -36,7 +36,7 @@ class bgenManager():
     def startWorker(self,worker_name
                             ,worker_filepath
                             ,param_skipframes
-                            ,param_bluramount):
+                            ,param_img_tweak_params):
         if worker_name in self.allWorkers.keys():
             # if this user already has a job, kill it and start a new one
             self.killWorker(worker_name)
@@ -51,7 +51,7 @@ class bgenManager():
         
         worker_videoname = getInputFile(worker_filepath)
 
-        w = bgenWorker(isdone,haserror,totalframes,currframe,errorString,worker_filepath,worker_videoname,param_skipframes,param_bluramount)
+        w = bgenWorker(isdone,haserror,totalframes,currframe,errorString,worker_filepath,worker_videoname,param_skipframes,param_img_tweak_params)
         
         # after this point, the class is copied to the new process. Only values with shared memory can be accessed
         bgenworkerproc = Process(target=w.start, args=(), daemon=True)
@@ -182,7 +182,7 @@ class bgenWorker():
                 prev_pts = cv.goodFeaturesToTrack(prev_gray,
                                             maxCorners=200,
                                             qualityLevel=0.01,
-                                            minDistance=30.0,
+                                            minDistance=15.0,
                                             blockSize=3)
             
             curr_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY) 
@@ -197,7 +197,7 @@ class bgenWorker():
             #Find transformation matrix            
             m, ret = cv.estimateAffinePartial2D(np.array(curr_pts), np.array(prev_pts))
 
-            # Extract traslation
+            # Extract translation
             dx = m[0,2]
             dy = m[1,2]
             
@@ -222,7 +222,7 @@ class bgenWorker():
             prev_pts = cv.goodFeaturesToTrack(prev_gray,
                                             maxCorners=200,
                                             qualityLevel=0.01,
-                                            minDistance=30.0,
+                                            minDistance=15.0,
                                             blockSize=3)
 
         
@@ -263,23 +263,24 @@ class bgenWorker():
                 diff = cv.absdiff(frame_stabilized,prev_frame)
                 ret,thresh_prevframe = cv.threshold(diff,self.frame_diff_threshold,255,cv.THRESH_BINARY)
 
-                # convert to grayscale 
+                # turn that into an actual 0-1 mask by making grayscale and thresholding again
                 thresh_prevframe_grayscale = cv.cvtColor(thresh_prevframe, cv.COLOR_BGR2GRAY)
                 ret,thresh_prevframe_grayscale = cv.threshold(thresh_prevframe_grayscale, 10, 255, cv.THRESH_BINARY)
 
                 # subtract previous two masks from this one
                 thresh_sub = cv.subtract(thresh_prevframe_grayscale,prev_thresh)
-                thresh_sub = cv.subtract(thresh_sub,prev2_thresh) 
+                thresh_sub = cv.subtract(thresh_sub,prev2_thresh)
 
                 # Create a mask based on the difference from each pixel's average color
                 background_diff = cv.absdiff(frame_stabilized, self._background)
                 ret,thresh_background = cv.threshold(background_diff,self.background_diff_threshold,255,cv.THRESH_BINARY) #cv.THRESH_BINARY_INV)
+
+                # turn that into an actual 0-1 mask by making grayscale and thresholding again
                 thresh_background_grayscale = cv.cvtColor(thresh_background, cv.COLOR_BGR2GRAY)
                 ret,thresh_background_grayscale = cv.threshold(thresh_background_grayscale, 10, 255, cv.THRESH_BINARY)
                 
                 # just ad them together
                 combined_thresh = cv.add(thresh_sub, thresh_background_grayscale)
-
 
                 # remove speckles
                 if self.denoise_radius > 1:
@@ -458,7 +459,7 @@ def test1():
     folder1 = "../test_video"
     #folder2 = "/Users/nmass/Software/birdflight/birdflight/app/static/user/c9344ae2-1b75-4ec7-8a9a-64d8141efc8c"
 
-    m.startWorker("asdklfjaslkdfj",folder1,10,0)
+    m.startWorker("asdklfjaslkdfj",folder1,10,{})
 
     for i in range(10):
         time.sleep(1)
@@ -477,4 +478,4 @@ def test1():
 
 # TEST PROGRAM
 if __name__ == "__main__":
-    test4()
+    test1()

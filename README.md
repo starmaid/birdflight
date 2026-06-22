@@ -46,11 +46,27 @@ I also use an external bound volume for storing uploaded videos and output files
 
 ## TODO
 
-Add actual IP banning and rate limiting. Add animation export.
+Technical
 
-Build the contianer on github actions.
+- [x] Improve detection using a background diff in addition to the per-frame diffs
+- [ ] Write stabilized video to file for loading and redoing animations
+- [ ] Add animation export.
 
-Move all config into env variables for docker, and get rid of config.json
+Test
+
+- [ ] Create Unit Test suite for birdgen
+- [ ] As part of test, write masks to test files
+
+Web Interface
+
+- [ ] update web UI for new features <- do this
+- [ ] Make the web UI better
+- [ ] Add actual IP banning and rate limiting. 
+
+Meta
+
+- [ ] Build the contianer on github actions.
+- [ ] Move all config into env variables for docker, and get rid of config.json
 
 ```
 docker build -t birdflight:latest .

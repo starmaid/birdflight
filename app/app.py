@@ -59,8 +59,15 @@ def index():
 
         (uuid, filepath) = getUserFolder(request)
 
+        # extract the image params
+        param_img_tweak_params = {
+            "frame_diff_threshold": int(r['range2slider']),
+            "background_diff_threshold": int(r['range3slider']),
+            "denoise_radius": int(r['range4slider'])
+        }
+
         # start the worker
-        birdManager.startWorker(uuid, filepath, int(r['range1slider']), int(r['range2slider']))
+        birdManager.startWorker(uuid, filepath, int(r['range1slider']), param_img_tweak_params)
 
         resp = make_response(render_template('index.html',
                                 error=None,
