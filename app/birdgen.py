@@ -7,7 +7,7 @@ import time
 from traceback import format_exc
 
 MAX_FRAMES_RENDER = 500
-SHARED_ERROR_STRING_LEN = 200
+SHARED_STRING_LEN = 200
 DEBUG_CV_IMSHOW = False
 
 # Spawn processes to work on images
@@ -43,13 +43,15 @@ class bgenManager():
         haserror = Value(c_bool,False)
         totalframes = Value(c_int32,0)
         currframe = Value(c_int32,0)
-        #errorString = Value(c_char_p, bytes("x"*SHARED_ERROR_STRING_LEN, 'ascii'))
-        errorString = Array('c', SHARED_ERROR_STRING_LEN)
+        #errorString = Value(c_char_p, bytes("x"*SHARED_STRING_LEN, 'ascii'))
+        infoString = Array('c', SHARED_STRING_LEN)
+        infoString.value = b"Initializing"
+        errorString = Array('c', SHARED_STRING_LEN)
         errorString.value = b"no error"
         
         worker_videoname = getInputFile(worker_filepath)
 
-        w = bgenWorker(isdone,haserror,totalframes,currframe,errorString,worker_filepath,worker_videoname,param_skipframes,param_img_tweak_params)
+        w = bgenWorker(isdone,haserror,totalframes,currframe,infoString,errorString,worker_filepath,worker_videoname,param_skipframes,param_img_tweak_params)
         
         # after this point, the class is copied to the new process. Only values with shared memory can be accessed
         bgenworkerproc = Process(target=w.start, args=(), daemon=True)
@@ -59,6 +61,7 @@ class bgenManager():
                 "handle": bgenworkerproc,
                 "isDone": isdone,
                 "hasError": haserror,
+                "infoString": infoString,
                 "errorString": errorString,
                 "startTime": int(time.time()),
                 "totalFrames": totalframes,
@@ -102,9 +105,10 @@ class sharedbgenData(Structure):
     ]
 
 class bgenWorker():
-    def __init__(self,isdone,haserror,totalframes,currframe,errorString,folderpath,videofilename,skip_frames,img_tweak_params):
+    def __init__(self,isdone,haserror,totalframes,currframe,infoString,errorString,folderpath,videofilename,skip_frames,img_tweak_params):
         self.isdone = isdone
         self.haserror = haserror
+        self.infoString = infoString
         self.errorString = errorString
         self.folderpath = folderpath
         
@@ -151,15 +155,23 @@ class bgenWorker():
             return 255
         return int(input)
 
+    def setinfostring(self, content):
+        self.infoString.value = bytes(content[:SHARED_STRING_LEN],'ascii')
+
     def start(self):
         # try to open the file first
         ret = self.openfile()
         if not ret:
             return
             
+        self.setinfostring("Stabilizing footage")
         self.stabilize()
+        self.setinfostring("Computing average pixel colors")
         self.getAverageFrame()
+        self.setinfostring("Applying effect")
         self.layering()
+        self.setinfostring("Complete")
+
 
     def stabilize(self):
         """stabilize and preprocess the video"""
@@ -222,13 +234,13 @@ class bgenWorker():
                                             qualityLevel=0.01,
                                             minDistance=15.0,
                                             blockSize=3)
+            
+            self.currframe.value = frame_num
 
         
 
     def layering(self):
-        try:
-            self.totalframes.value = self._length
-            
+        try:            
             success = False
             frame_num = 0
 
@@ -320,10 +332,12 @@ class bgenWorker():
                 #cv.imwrite(self.imgpath,composite)
                 success = True
                 frame_num += 1
+                self.currframe.value = frame_num
             
             if success:
                 # also archive a copy when done
                 result = np.clip(composite, 0, 255).astype(np.uint8)
+                cv.imwrite(self.imgpath,result) 
                 cv.imwrite(f'{self.imgpath}_{int(time.time())}.png',result) 
         
         except Exception as e:
@@ -332,7 +346,7 @@ class bgenWorker():
             try:
                 err_string = f"Total Frames: {self._length} Frame on Error: {frame_num}"
                 print(err_string)
-                self.errorString.value = bytes(err_string[:SHARED_ERROR_STRING_LEN],'ascii')
+                self.errorString.value = bytes(err_string[:SHARED_STRING_LEN],'ascii')
             except:
                 print("Error printing info string")
                 print(format_exc())
@@ -361,6 +375,8 @@ class bgenWorker():
         if self._length > MAX_FRAMES_RENDER:
             self._length = MAX_FRAMES_RENDER
 
+        self.totalframes.value = self._length
+        
         self.num_frames_after_skips = int(self._length / self.skip_frames) + 1
 
         # Get width and height of video stream

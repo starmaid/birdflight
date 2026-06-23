@@ -110,7 +110,7 @@ img {
     flex-flow: row;
     align-items: center;
     background-color: white;
-    border-radius: 2rem;
+    border-radius: 0rem;
 }
 
 .right {
@@ -124,7 +124,7 @@ img {
     flex-flow: row;
     align-items: center;
     background-color: white;
-    border-radius: 2rem;
+    border-radius: 0rem;
 }
 
 .ctextcontainer {

@@ -6,18 +6,25 @@
 </head>
 
 <body>
+    {% if isdone %}
     <img src="{{ preview_img }}">
-    <p>Done: {{ isdone }} Errored: {{ error }} Duration: {{ duration }}s Frames: {{ currframe }}/{{ totalframes }}</p>
-    <p>{{ errorString }}</p>
     <script>
         function refresh() {
-            //update src attribute with a cache buster query
-
-            setTimeout("location.reload();", 5000);
-            //console.log("refreshing...");
+            setTimeout("location.reload();", 10000);
         }
         refresh();
     </script>
+    {% else %}
+    <script>
+        function refresh() {
+            setTimeout("location.reload();", 100);
+        }
+        refresh();
+    </script>
+    {% endif %}
+    <p>{{ infoString }} {{ currframe }}/{{ totalframes }} {{ duration }}s </p>
+    <p>Done: {{ isdone }} Errored: {{ error }}: {{ errorString }}</p>
+
 </body>
 
 </html>

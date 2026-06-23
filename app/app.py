@@ -215,6 +215,7 @@ def imgview():
     try: 
         workerref = birdManager.allWorkers[uuid]
         error = workerref['hasError'].value
+        infoString = workerref['infoString'].value.decode('ascii')
         errorString = workerref['errorString'].value.decode('ascii')
         done = workerref['isDone'].value
         duration = int(time.time()) - workerref['startTime']
@@ -222,6 +223,7 @@ def imgview():
         currframe = workerref['currentFrame'].value
     except KeyError:
         error = None
+        infoString = None
         errorString = None
         done = None
         duration = 0
@@ -232,6 +234,7 @@ def imgview():
         preview_img=f"/static/user/{uuid}/out.png?{int(time.time())}",
         isdone=done,
         error=error,
+        infoString=infoString,
         errorString=errorString,
         duration=duration,
         totalframes=totalframes,

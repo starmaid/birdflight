@@ -58,6 +58,24 @@
   slider2.oninput = function () {
     output2.innerHTML = this.value;
   } 
+
+  var slider3 = document.getElementById("range3slider");
+  var output3 = document.getElementById("range3");
+  output3.innerHTML = slider3.value; // Display the default slider value
+
+  // Update the current slider value (each time you drag the slider handle)
+  slider3.oninput = function () {
+    output3.innerHTML = this.value;
+  } 
+
+  var slider4 = document.getElementById("range4slider");
+  var output4 = document.getElementById("range4");
+  output4.innerHTML = slider4.value; // Display the default slider value
+
+  // Update the current slider value (each time you drag the slider handle)
+  slider4.oninput = function () {
+    output4.innerHTML = this.value;
+  } 
 </script>
 {% endblock %}
 
