@@ -44,6 +44,12 @@ You can edit the `docker-compose.yml` to change parameters of the deployment. Yo
 
 I also use an external bound volume for storing uploaded videos and output files. This can be modified for your own use, as this path might not be the same as mine.
 
+## Testing
+
+```
+py-spy record --format speedscope -- python3 birdgen.py
+```
+
 ## TODO
 
 Technical
@@ -54,6 +60,7 @@ Technical
 
 Test
 
+- [x] Look at timing and improve
 - [ ] Create Unit Test suite for birdgen
 - [ ] As part of test, write masks to test files
 

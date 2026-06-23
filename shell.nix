@@ -12,6 +12,7 @@ pkgs.mkShell {
     pythonWithOpencv
     pkgs.pkg-config
     pkgs.stdenv.cc.cc.lib
+    pkgs.py-spy
   ];
 
   shellHook = ''

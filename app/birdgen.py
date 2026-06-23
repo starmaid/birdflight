@@ -10,7 +10,7 @@ import pickle
 
 MAX_FRAMES_RENDER = 500
 SHARED_ERROR_STRING_LEN = 200
-DEBUG_CV_IMSHOW = True
+DEBUG_CV_IMSHOW = False
 
 # Spawn processes to work on images
 # give arguments with folders and filenames etc
@@ -235,17 +235,17 @@ class bgenWorker():
             frame_num = 0
 
             for frame in self.stabilized_frames:
-                print(frame_num)
+                #print(frame_num)
                 if frame_num == 0:
                     # do first frame stuff
-                    prev_frame = frame
+                    prev_frame = frame #.astype(np.float32, copy=False)
 
-                    prev_thresh = np.zeros((self._h,self._w),dtype=np.uint8)
+                    prev_thresh = np.zeros((self._h,self._w),dtype=np.uint8)#float32)
                     prev_thresh_sub = prev_thresh
                     prev2_thresh = prev_thresh
 
-                    composite = cv.cvtColor(frame, cv.COLOR_BGR2BGRA)
-                    alpha_composite = composite[:,:,3] / 255.0
+                    # save the current output composite as the first frame
+                    composite = frame #.astype(np.float32, copy=False)
 
                     frame_num = 1
 
@@ -257,7 +257,7 @@ class bgenWorker():
                     frame_num += 1
                     continue
                 
-                frame_stabilized = frame
+                frame_stabilized = frame #.astype(np.float32, copy=False)
 
                 # calculate difference from previous frame to current frame 
                 diff = cv.absdiff(frame_stabilized,prev_frame)
@@ -283,6 +283,7 @@ class bgenWorker():
                 combined_thresh = cv.add(thresh_sub, thresh_background_grayscale)
 
                 # remove speckles
+                # if set to 1, don't do this to save time
                 if self.denoise_radius > 1:
                     se1 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (self.denoise_radius,self.denoise_radius))
                     se2 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (self.denoise_radius,self.denoise_radius))
@@ -290,22 +291,16 @@ class bgenWorker():
                     mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, se1)
                 else:
                     mask = combined_thresh
-
-                # set the mask as the alpha
-                foreground = cv.cvtColor(frame_stabilized, cv.COLOR_BGR2BGRA)
-                foreground[:,:,3] = mask
-
-                alpha_foreground = foreground[:,:,3] / 255.0
-
-                # set adjusted colors
-                for color in range(0, 3):
-                    composite[:,:,color] = alpha_foreground * foreground[:,:,color] + \
-                        alpha_composite * composite[:,:,color] * (1 - alpha_foreground)
-
-                # set adjusted alpha and denormalize back to 0-255
-                composite[:,:,3] = (1 - (1 - alpha_foreground) * (1 - alpha_composite)) * 255
-
                 
+                # Do this for smooth alpha blends, at the cost of like +20% time
+                #alpha = (mask.astype(np.float32) / 255.0)[..., None]
+                #composite *= (1.0 - alpha)
+                #composite += alpha * frame_stabilized
+
+                # Do this if the mask is 0 or 1 only
+                cv.copyTo(frame_stabilized, mask, composite)
+
+
                 # do last stuff
 
                 #save curent values as prevs
@@ -323,14 +318,15 @@ class bgenWorker():
                     elif k == ord('w'):
                         time.sleep(5)
                 
-                # save to the out image
-                cv.imwrite(self.imgpath,composite)
+                # save to the out image. dont do this it adds so much time
+                #cv.imwrite(self.imgpath,composite)
                 success = True
                 frame_num += 1
             
             if success:
                 # also archive a copy when done
-                cv.imwrite(f'{self.imgpath}_{int(time.time())}.png',composite) 
+                result = np.clip(composite, 0, 255).astype(np.uint8)
+                cv.imwrite(f'{self.imgpath}_{int(time.time())}.png',result) 
         
         except Exception as e:
             print("Error generating image")
@@ -398,9 +394,9 @@ def getInputFile(folderpath):
 
 def test4():
     folder1 = "../test_video"
-    img_tweak_params = {"frame_diff_threshold": 250,
-                        "background_diff_threshold": 150,
-                        "denoise_radius": 0}
+    img_tweak_params = {"frame_diff_threshold": 50,
+                        "background_diff_threshold": 250,
+                        "denoise_radius": 4}
     w = bgenWorker(Value(c_bool,False),Value(c_bool,False),Value(c_int32,0),Value(c_int32,0),Array('c', SHARED_ERROR_STRING_LEN),folder1,getInputFile(folder1),4,img_tweak_params)
     w.openfile()
     w.stabilized_frames = np.load("stabilized_bird_10.npy")
@@ -478,4 +474,4 @@ def test1():
 
 # TEST PROGRAM
 if __name__ == "__main__":
-    test1()
+    test4()
