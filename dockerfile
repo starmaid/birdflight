@@ -11,7 +11,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY . /app
 
-RUN apt update && apt install -y libsm6 libxext6 ffmpeg libfontconfig1 libxrender1 libgl1-mesa-glx
+RUN apt update && apt install -y libsm6 libxext6 ffmpeg libgl1 libfontconfig1 libxrender1 libglx-mesa0
 RUN pip install -r /app/requirements.txt
 
 #RUN python3 -m venv ./venv

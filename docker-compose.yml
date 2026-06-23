@@ -4,7 +4,7 @@ services:
     pull_policy: build
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./dockerfile
     ports:
       - 5050:80
     volumes:

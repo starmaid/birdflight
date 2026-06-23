@@ -1,10 +1,22 @@
-{ pkgs ? import <nixpkgs> {} }:
+{
+  pkgs ? import <nixpkgs> { },
+}:
 
 let
-  pythonWithOpencv = pkgs.python3.withPackages (ps: [
+  python = pkgs.python3.override {
+    self = python;
+    packageOverrides = pyfinal: pyprev: {
+      ipinfo = pyfinal.callPackage ./ipinfo.nix { };
+    };
+  };
+
+  pythonWithOpencv = python.withPackages (ps: [
     (ps.opencv4.override {
-        enableGtk3 = true;
-      })
+      enableGtk3 = true;
+    })
+    ps.flask
+    ps.waitress
+    ps.ipinfo
   ]);
 in
 pkgs.mkShell {
@@ -13,6 +25,8 @@ pkgs.mkShell {
     pkgs.pkg-config
     pkgs.stdenv.cc.cc.lib
     pkgs.py-spy
+    pkgs.docker
+    pkgs.docker-compose
   ];
 
   shellHook = ''
