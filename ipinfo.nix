@@ -20,10 +20,12 @@ buildPythonPackage rec {
 
   build-system = [ setuptools ];
 
+  pythonImportsCheck = [ "ipinfo" ];
+
   dependencies = [ 
-    requests
-    cachetools
     aiohttp
+    cachetools
+    requests
   ];
 
   meta = {
