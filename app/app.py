@@ -122,6 +122,13 @@ def getUserFolder(request):
         meta['NUM_REQUESTS'] = 1
         meta['LIFETIME_UPLOAD'] = 0
 
+        meta['GENERATE'] = {'0_uploaded':False,
+                            '1_filename':"",
+                            '2_stabilized':False,
+                            '3_avgcolor':False,
+                            '4_layered':False,
+                            }
+
         with open(meta_filepath,'w') as fp:
             json.dump(meta,fp)
 
