@@ -27,6 +27,7 @@ pkgs.mkShell {
     pkgs.py-spy
     pkgs.docker
     pkgs.docker-compose
+    pkgs.ruff
   ];
 
   shellHook = ''
