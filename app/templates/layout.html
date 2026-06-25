@@ -12,12 +12,19 @@
     <div class="page-container">
       <div class="page-container-box">
         <div class="row-header">
-          <h1 class="logo">
-            Birdflight
-          </h1>
+          <div class="row-header-line">
+            <div class="logo-img">
+              <img src="{{ url_for('static', filename='logo.png') }}">
+            </div>
+            <div>
+              <h1 class="logo">
+                Birdflight
+              </h1>
+            </div>
+          </div>
           <div class="menubar">
-            <div class="menubar-item"><a href="{{ url_for('index') }}">Home</a></div>
-            <div class="menubar-item"><a href="{{ url_for('info') }}">Info</a></div>
+            <div class="menubar-item" id="tab-home"><a href="{{ url_for('index') }}">Home</a></div>
+            <div class="menubar-item" id="tab-info"><a href="{{ url_for('info') }}">Info</a></div>
           </div>
           {% block pageinfo %}
           {% endblock %}

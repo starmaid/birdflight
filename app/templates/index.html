@@ -1,12 +1,16 @@
 {% extends "layout.html" %}
 
 {% block pageinfo %}
-<p class="pageinfo-text">Homepage. Create a new image here.</p>
+<script>
+  var activeTab = document.getElementById("tab-home")
+  activeTab.style.backgroundColor = "#FFFFFF";
+</script>
 {% endblock %}
 
 {% block content %}
 <div class="parent">
   <div class="left">
+    <!--
     <div>
       <p>This website generates stacked images of birds in flight. Take a short (less than 20s) video that is stable
         (angle
@@ -15,84 +19,119 @@
       </p>
       <p>TLDR: Select Video, Upload, Then hit Generate. Wait for the image on the right to refresh.</p>
     </div>
-
+-->
     <div class="entry-step">
-      <h3>1. Upload Video</h3>
-      <form action="/api/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="videofile" id="videofile" accept="video/*"><br>
-        <button type="submit">Upload</button>
-      </form>
-      {% if error %}
-      <p>Message: {{ error }}</p>
-      {% endif %}
+      <div class="entry-step-title">
+        <h3>1. Upload Video</h3>
+      </div>
+      <div class="entry-step-body">
+        <p>
+          Upload a video. Good videos:
+        </p>
+        <ul>
+          <li>Are less than 20s</li>
+          <li>Have no panning or zooming</li>
+          <li>Have some static reference points</li>
+        </ul>
+        
+        <form action="/api/upload" method="post" enctype="multipart/form-data">
+          <input type="file" name="videofile" id="videofile" accept="video/*"><br>
+          <button type="submit">Upload</button>
+        </form>
+        {% if error %}
+        <p>Message: {{ error }}</p>
+        {% endif %}
+      </div>
     </div>
     <div class="entry-step">
-      <h3>2. Stabilize</h3>
-      <form action="/api/stabilize" method="post" enctype="multipart/form-data">
-        <button type="submit">Stabilize</button>
-      </form>
+      <div class="entry-step-title">
+        <h3>2. Stabilize</h3>
+      </div>
+      <div class="entry-step-body">
+        <p>After uploading, you only need to stabilize once.</p>
+        <p>You can see the result of the stabilization as a plot.</p>
+        <form action="/api/stabilize" method="post" enctype="multipart/form-data">
+          <button type="submit">Stabilize</button>
+        </form>
+      </div>
     </div>
 
     <div class="entry-step">
+      <div class="entry-step-title">
 
-      <h3>3. Layer</h3>
-      <form action="/" method="post" enctype="multipart/form-data">
-        <label for="range1">Skip frames</label>
-        <div id="range1"></div>
-        <input type="range" min="1" max="15" value="1" class="slider" id="range1slider" name="range1slider">
-        <br>
-        <label for="range2">Previous Frame Threshold</label>
-        <div id="range2"></div>
-        <input type="range" min="0" max="255" value="50" class="slider" id="range2slider" name="range2slider">
-        <br>
-        <label for="range3">Background Threshold</label>
-        <div id="range3"></div>
-        <input type="range" min="0" max="255" value="50" class="slider" id="range3slider" name="range3slider">
-        <br>
-        <label for="range4">Despeckle Radius (Pixels)</label>
-        <div id="range4"></div>
-        <input type="range" min="0" max="20" value="1" class="slider" id="range4slider" name="range4slider">
-        <br>
-        <button type="submit">Generate New Image</button>
-      </form>
+        <h3>3. Layer</h3>
+      </div>
+      <div class="entry-step-body">
+        <p>
+          This is the step that generates an output image.
+        </p>
+        <p>Lower thresholds mean that smaller differences will be stacked.</p>
+        <form action="/" method="post" enctype="multipart/form-data">
+          <label for="range1">Skip frames</label>
+          <div class="slider-and-value">
+            <div class="slider-value" id="range1"></div>
+            <input type="range" min="1" max="15" value="1" class="slider" id="range1slider" name="range1slider">
+          </div>
 
-      <script>
-        var slider1 = document.getElementById("range1slider");
-        var output1 = document.getElementById("range1");
-        output1.innerHTML = slider1.value; // Display the default slider value
+          <label for="range2">Previous Frame Threshold</label>
+          <div class="slider-and-value">
+            <div class="slider-value" id="range2"></div>
+            <input type="range" min="0" max="255" value="50" class="slider" id="range2slider" name="range2slider">
+          </div>
 
-        // Update the current slider value (each time you drag the slider handle)
-        slider1.oninput = function () {
-          output1.innerHTML = this.value;
-        }
+          <label for="range3">Background Threshold</label>
+          <div class="slider-and-value">
+            <div class="slider-value" id="range3"></div>
+            <input type="range" min="0" max="255" value="50" class="slider" id="range3slider" name="range3slider">
+          </div>
 
-        var slider2 = document.getElementById("range2slider");
-        var output2 = document.getElementById("range2");
-        output2.innerHTML = slider2.value; // Display the default slider value
+          <label for="range4">Despeckle Radius (Pixels)</label>
+          <div class="slider-and-value">
 
-        // Update the current slider value (each time you drag the slider handle)
-        slider2.oninput = function () {
-          output2.innerHTML = this.value;
-        }
+            <div class="slider-value" id="range4"></div>
+            <input type="range" min="0" max="20" value="1" class="slider" id="range4slider" name="range4slider">
+          </div>
+          <button type="submit">Generate New Image</button>
+        </form>
 
-        var slider3 = document.getElementById("range3slider");
-        var output3 = document.getElementById("range3");
-        output3.innerHTML = slider3.value; // Display the default slider value
+        <script>
+          var slider1 = document.getElementById("range1slider");
+          var output1 = document.getElementById("range1");
+          output1.innerHTML = slider1.value; // Display the default slider value
 
-        // Update the current slider value (each time you drag the slider handle)
-        slider3.oninput = function () {
-          output3.innerHTML = this.value;
-        }
+          // Update the current slider value (each time you drag the slider handle)
+          slider1.oninput = function () {
+            output1.innerHTML = this.value;
+          }
 
-        var slider4 = document.getElementById("range4slider");
-        var output4 = document.getElementById("range4");
-        output4.innerHTML = slider4.value; // Display the default slider value
+          var slider2 = document.getElementById("range2slider");
+          var output2 = document.getElementById("range2");
+          output2.innerHTML = slider2.value; // Display the default slider value
 
-        // Update the current slider value (each time you drag the slider handle)
-        slider4.oninput = function () {
-          output4.innerHTML = this.value;
-        } 
-      </script>
+          // Update the current slider value (each time you drag the slider handle)
+          slider2.oninput = function () {
+            output2.innerHTML = this.value;
+          }
+
+          var slider3 = document.getElementById("range3slider");
+          var output3 = document.getElementById("range3");
+          output3.innerHTML = slider3.value; // Display the default slider value
+
+          // Update the current slider value (each time you drag the slider handle)
+          slider3.oninput = function () {
+            output3.innerHTML = this.value;
+          }
+
+          var slider4 = document.getElementById("range4slider");
+          var output4 = document.getElementById("range4");
+          output4.innerHTML = slider4.value; // Display the default slider value
+
+          // Update the current slider value (each time you drag the slider handle)
+          slider4.oninput = function () {
+            output4.innerHTML = this.value;
+          } 
+        </script>
+      </div>
     </div>
 
   </div>
@@ -106,11 +145,6 @@
       {% else %}
       <p>No preview yet...</p>
       {% endif %}
-
-      <p>Right click to save image. Image will refresh as it is loaded.</p>
-      <p>Sorry there isnt a loading screen or something. Check to see if the frame reports there is an error. "Errored:
-        True"</p>
-      <p>If you want to add one, make a pull request</p>
     </div>
   </div>
 </div>

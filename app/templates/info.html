@@ -1,6 +1,10 @@
 {% extends "layout.html" %}
+
 {% block pageinfo %}
-<p class="pageinfo text">Info page.</p>
+<script>
+  var activeTab = document.getElementById("tab-info")
+  activeTab.style.backgroundColor = "#FFFFFF";
+</script>
 {% endblock %}
 
 {% block left %}
