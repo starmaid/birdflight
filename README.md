@@ -63,10 +63,11 @@ Test
 - [x] Look at timing and improve
 - [ ] Create Unit Test suite for birdgen
 - [ ] As part of test, write masks to test files
+- [ ] Plot stabilization result to show if thats likely a problem
 
 Web Interface
 
-- [ ] update web UI for new features <- do this
+- [x] update web UI for new features <- do this
 - [ ] Make the web UI better
 - [ ] Add actual IP banning and rate limiting. 
 

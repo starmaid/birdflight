@@ -1,99 +1,117 @@
 {% extends "layout.html" %}
+
 {% block pageinfo %}
-<p class="pageinfo text">Homepage. Create a new image here.</p>
+<p class="pageinfo-text">Homepage. Create a new image here.</p>
 {% endblock %}
 
-{% block left %}
-<div class="ctextcontainer">
-  <p>This website generates stacked images of birds in flight. Take a short (less than 20s) video that is stable (angle does not move significantly) and this program will overlay the changes on top! See the Info page for some examples.</p>
-  <p>TLDR: Select Video, Upload, Then hit Generate. Wait for the image on the right to refresh.</p>
-  <div class="textcontainer">
-    <h3>Upload Video</h3>
-    <form action="/api/upload" method="post" enctype="multipart/form-data">
-      <input type="file" name="videofile" id="videofile" accept="video/*"><br>
-      <button type="submit">Upload</button>
-    </form>
+{% block content %}
+<div class="parent">
+  <div class="left">
+    <div>
+      <p>This website generates stacked images of birds in flight. Take a short (less than 20s) video that is stable
+        (angle
+        does not move significantly) and this program will overlay the changes on top! See the Info page for some
+        examples.
+      </p>
+      <p>TLDR: Select Video, Upload, Then hit Generate. Wait for the image on the right to refresh.</p>
+    </div>
 
-    {% if error %}
-    <p>Message: {{ error }}</p>
-    {% endif %}
-    <h3>Modify Settings</h3>
-    <form action="/" method="post" enctype="multipart/form-data">
-      <label for="range1">Skip frames</label>
-      <div id="range1"></div>
-      <input type="range" min="1" max="15" value="1" class="slider" id="range1slider" name="range1slider">
-      <br>
-      <label for="range2">Previous Frame Pixel Difference Threshold</label>
-      <div id="range2"></div>
-      <input type="range" min="0" max="255" value="50" class="slider" id="range2slider" name="range2slider">
-      <br>
-      <label for="range3">Background Pixel Difference Threshold</label>
-      <div id="range3"></div>
-      <input type="range" min="0" max="255" value="50" class="slider" id="range3slider" name="range3slider">
-      <br>
-      <label for="range4">Mask Despeckle Radius (Pixels)</label>
-      <div id="range4"></div>
-      <input type="range" min="0" max="20" value="1" class="slider" id="range4slider" name="range4slider">
-      <br>
-      <button type="submit">Generate New Image</button>
-    </form>
+    <div class="entry-step">
+      <h3>1. Upload Video</h3>
+      <form action="/api/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="videofile" id="videofile" accept="video/*"><br>
+        <button type="submit">Upload</button>
+      </form>
+      {% if error %}
+      <p>Message: {{ error }}</p>
+      {% endif %}
+    </div>
+    <div class="entry-step">
+      <h3>2. Stabilize</h3>
+      <form action="/api/stabilize" method="post" enctype="multipart/form-data">
+        <button type="submit">Stabilize</button>
+      </form>
+    </div>
+
+    <div class="entry-step">
+
+      <h3>3. Layer</h3>
+      <form action="/" method="post" enctype="multipart/form-data">
+        <label for="range1">Skip frames</label>
+        <div id="range1"></div>
+        <input type="range" min="1" max="15" value="1" class="slider" id="range1slider" name="range1slider">
+        <br>
+        <label for="range2">Previous Frame Threshold</label>
+        <div id="range2"></div>
+        <input type="range" min="0" max="255" value="50" class="slider" id="range2slider" name="range2slider">
+        <br>
+        <label for="range3">Background Threshold</label>
+        <div id="range3"></div>
+        <input type="range" min="0" max="255" value="50" class="slider" id="range3slider" name="range3slider">
+        <br>
+        <label for="range4">Despeckle Radius (Pixels)</label>
+        <div id="range4"></div>
+        <input type="range" min="0" max="20" value="1" class="slider" id="range4slider" name="range4slider">
+        <br>
+        <button type="submit">Generate New Image</button>
+      </form>
+
+      <script>
+        var slider1 = document.getElementById("range1slider");
+        var output1 = document.getElementById("range1");
+        output1.innerHTML = slider1.value; // Display the default slider value
+
+        // Update the current slider value (each time you drag the slider handle)
+        slider1.oninput = function () {
+          output1.innerHTML = this.value;
+        }
+
+        var slider2 = document.getElementById("range2slider");
+        var output2 = document.getElementById("range2");
+        output2.innerHTML = slider2.value; // Display the default slider value
+
+        // Update the current slider value (each time you drag the slider handle)
+        slider2.oninput = function () {
+          output2.innerHTML = this.value;
+        }
+
+        var slider3 = document.getElementById("range3slider");
+        var output3 = document.getElementById("range3");
+        output3.innerHTML = slider3.value; // Display the default slider value
+
+        // Update the current slider value (each time you drag the slider handle)
+        slider3.oninput = function () {
+          output3.innerHTML = this.value;
+        }
+
+        var slider4 = document.getElementById("range4slider");
+        var output4 = document.getElementById("range4");
+        output4.innerHTML = slider4.value; // Display the default slider value
+
+        // Update the current slider value (each time you drag the slider handle)
+        slider4.oninput = function () {
+          output4.innerHTML = this.value;
+        } 
+      </script>
+    </div>
 
   </div>
-</div>
-<script>
-  var slider1 = document.getElementById("range1slider");
-  var output1 = document.getElementById("range1");
-  output1.innerHTML = slider1.value; // Display the default slider value
+  <div class="right">
+    <div class="ctextcontainer">
+      <h2>Image Preview</h2>
+      {% if preview_img %}
+      <div class="frame-container">
+        <iframe src="/imgview" title="Image Preview" class="responsive-iframe"></iframe>
+      </div>
+      {% else %}
+      <p>No preview yet...</p>
+      {% endif %}
 
-  // Update the current slider value (each time you drag the slider handle)
-  slider1.oninput = function () {
-    output1.innerHTML = this.value;
-  }
-
-  var slider2 = document.getElementById("range2slider");
-  var output2 = document.getElementById("range2");
-  output2.innerHTML = slider2.value; // Display the default slider value
-
-  // Update the current slider value (each time you drag the slider handle)
-  slider2.oninput = function () {
-    output2.innerHTML = this.value;
-  } 
-
-  var slider3 = document.getElementById("range3slider");
-  var output3 = document.getElementById("range3");
-  output3.innerHTML = slider3.value; // Display the default slider value
-
-  // Update the current slider value (each time you drag the slider handle)
-  slider3.oninput = function () {
-    output3.innerHTML = this.value;
-  } 
-
-  var slider4 = document.getElementById("range4slider");
-  var output4 = document.getElementById("range4");
-  output4.innerHTML = slider4.value; // Display the default slider value
-
-  // Update the current slider value (each time you drag the slider handle)
-  slider4.oninput = function () {
-    output4.innerHTML = this.value;
-  } 
-</script>
-{% endblock %}
-
-{% block right %}
-<div class="ctextcontainer">
-  <h2>Image Preview</h2>
-  {% if preview_img %}
-  <div class="frame-container">
-    <iframe src="/imgview" title="Image Preview" class="responsive-iframe"></iframe>
+      <p>Right click to save image. Image will refresh as it is loaded.</p>
+      <p>Sorry there isnt a loading screen or something. Check to see if the frame reports there is an error. "Errored:
+        True"</p>
+      <p>If you want to add one, make a pull request</p>
+    </div>
   </div>
-  {% else %}
-  <p>No preview yet...</p>
-  {% endif %}
-
-  <p>Right click to save image. Image will refresh as it is loaded.</p>
-  <p>Sorry there isnt a loading screen or something. Check to see if the frame reports there is an error. "Errored: True"</p>
-  <p>If you want to add one, make a pull request</p>
 </div>
-
-
 {% endblock %}
