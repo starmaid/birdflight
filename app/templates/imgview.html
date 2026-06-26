@@ -2,28 +2,30 @@
 <html>
 
 <head>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
 <body>
-    {% if isdone %}
+  <div class="page-container-box">
+    <div class="row-header">
+      <div class="menubar">
+        <div class="menubar-item" id="tab-stabilization"><a href="{{ url_for('index') }}">Home</a></div>
+        <div class="menubar-item" id="tab-avgcolor"><a href="{{ url_for('info') }}">Info</a></div>
+        <div class="menubar-item" id="tab-layering"><a href="{{ url_for('info') }}">Info</a></div>
+      </div>
+    </div>
     <img src="{{ preview_img }}">
-    <script>
-        function refresh() {
-            setTimeout("location.reload();", 10000);
-        }
-        refresh();
-    </script>
-    {% else %}
-    <script>
-        function refresh() {
-            setTimeout("location.reload();", 10000);
-        }
-        refresh();
-    </script>
-    {% endif %}
-    <p>{{ infoString }} {{ currframe }}/{{ totalframes }} {{ duration }}s </p>
-    <p>Done: {{ isdone }} Errored: {{ error }}: {{ errorString }}</p>
+  </div>
+
+
+  <script>
+    function refresh() {
+      setTimeout("location.reload();", 10000);
+    }
+    refresh();
+  </script>
+  <p>{{ infoString }} {{ currframe }}/{{ totalframes }} {{ duration }}s </p>
+  <p>Done: {{ isdone }} Errored: {{ error }}: {{ errorString }}</p>
 
 </body>
 
