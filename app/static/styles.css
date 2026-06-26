@@ -24,7 +24,7 @@ h3 {
     font-family: DMSerifText-Regular;
     color: black;
     margin: 0.3rem;
-    margin-left: 0;
+    margin-left: 0.2rem;
 }
 
 ul {
@@ -56,7 +56,6 @@ img {
 
 .gallerycontainer {
     flex: 1 1 auto;
-    margin: 10%;
     text-align: center;
 }
 
@@ -146,11 +145,13 @@ body {
     flex: 1 1 auto;
     display: flex;
     flex-direction: row;
+    border-color: var(--mid-border);
+    border-style: solid;
 }
 
 .left {
     flex: 1 1 auto;
-    margin-left: 0.4rem;
+    margin-left: 0rem;
     margin-right: 0.1rem;
     width: 33%;
     display: flex;
@@ -158,7 +159,6 @@ body {
     align-items: stretch;
     background-color: white;
     border-radius: 0rem;
-    border-style: solid;
 }
 
 .right {
@@ -168,7 +168,8 @@ body {
     margin-right: 0.1rem;
     display: flex;
     flex-flow: column;
-    align-items: center;
+    align-items: start;
+    justify-content: stretch;
     background-color: white;
     border-radius: 0rem;
     border-style: solid;
@@ -178,8 +179,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    border-style: solid;
-    border-color: var(--mid-border);
+
 }
 
 .entry-step-title {
@@ -220,39 +220,13 @@ button {
 
 
 
-
-.box {
-    display: flex;
-    flex-flow: column;
-    height: 100%;
-}
-
-.box .row {
-    border: 1px dotted #d3d6ff;
-}
-
-.box .row.header {
-    flex: 0 0 auto;
-}
-
-.box .row.content {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    overflow:auto
-}
-
-.box .row.footer {
-    flex: 0 1 40px;
-}
-
-
-
 .frame-container {
+    border-style: solid;
     position: relative;
     overflow: hidden;
     width: 100%;
-    padding-top: 56.25%; /* 16:9 Aspect Ratio (divide 9 by 16 = 0.5625) */
+    min-height: 20rem;
+    /*padding-top: 56.25%; 16:9 Aspect Ratio (divide 9 by 16 = 0.5625) */
 }
   
 /* Then style the iframe to fit in the container div with full height and width */

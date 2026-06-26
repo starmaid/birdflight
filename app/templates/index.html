@@ -33,7 +33,7 @@
           <li>Have no panning or zooming</li>
           <li>Have some static reference points</li>
         </ul>
-        
+
         <form action="/api/upload" method="post" enctype="multipart/form-data">
           <input type="file" name="videofile" id="videofile" accept="video/*"><br>
           <button type="submit">Upload</button>
@@ -134,17 +134,24 @@
       </div>
     </div>
 
+    <div class="entry-step">
+      <div class="entry-step-title">
+        <h3>4. Download</h3>
+      </div>
+      <div class="entry-step-body">
+        <form action="/api/download" method="post" enctype="multipart/form-data">
+          <button type="submit">Download</button>
+        </form>
+      </div>
+    </div>
   </div>
   <div class="right">
-    <div class="ctextcontainer">
-      <h2>Image Preview</h2>
-      {% if preview_img %}
-      <div class="frame-container">
-        <iframe src="/imgview" title="Image Preview" class="responsive-iframe"></iframe>
-      </div>
-      {% else %}
-      <p>No preview yet...</p>
-      {% endif %}
+    <div class="frame-container">
+      <iframe src="/imgview" title="Image Preview" class="responsive-iframe"></iframe>
+    </div>
+    <div class="console-out">
+      <h3>Console Out</h3>
+      <p>></p>
     </div>
   </div>
 </div>
