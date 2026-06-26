@@ -1,6 +1,6 @@
 import cv2 as cv
 import numpy as np
-from multiprocessing import Process, shared_memory, Value, Array
+from multiprocessing import Process, shared_memory, Value, Array, Queue
 from ctypes import Structure, c_int32, c_bool, c_char_p
 import time
 from traceback import format_exc
@@ -21,11 +21,13 @@ def test4():
         Value(c_int32, 0),
         Value(c_int32, 0),
         Array("c", SHARED_STRING_LEN),
+        Array("c", SHARED_STRING_LEN),
         folder1,
         getInputFile(folder1),
-        4,
-        img_tweak_params,
+        Queue(),
     )
+    w.setParams(4, img_tweak_params)
+    
     w.openfile()
     w.stabilized_frames = np.load("stabilized_bird_10.npy")
     w.getAverageFrame()
@@ -45,11 +47,13 @@ def test3():
         Value(c_int32, 0),
         Value(c_int32, 0),
         Array("c", SHARED_STRING_LEN),
+        Array("c", SHARED_STRING_LEN),
         folder1,
         getInputFile(folder1),
-        10,
-        {},
+        Queue(),
     )
+    w.setParams(10, {})
+    
     w.openfile()
     w.stabilized_frames = np.load("stabilized_bird_10.npy")
     w.getAverageFrame()
@@ -72,12 +76,14 @@ def test2():
         Value(c_bool, False),
         Value(c_int32, 0),
         Value(c_int32, 0),
-        None,
+        Array("c", SHARED_STRING_LEN),
+        Array("c", SHARED_STRING_LEN),
         folder1,
         getInputFile(folder1),
-        10,
-        {},
+        Queue(),
     )
+    w.setParams(10, {})
+    
     w.openfile()
     # print("file opened")
     w.stabilize()
@@ -105,7 +111,7 @@ def test1():
     folder1 = "../test_video"
     # folder2 = "/Users/nmass/Software/birdflight/birdflight/app/static/user/c9344ae2-1b75-4ec7-8a9a-64d8141efc8c"
 
-    m.startWorker("asdklfjaslkdfj", folder1, 10, {})
+    m.startWorker("asdklfjaslkdfj", folder1)
 
     for i in range(10):
         time.sleep(1)

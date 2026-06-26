@@ -16,6 +16,7 @@ from flask import (
     url_for,
     send_file,
     send_from_directory,
+    jsonify,
 )
 from waitress import serve
 import ipinfo
@@ -51,14 +52,28 @@ def index():
         uuid = request.cookies.get("UUID")
 
         if uuid is None:
-            prev_image = None
+            image_paths = None
         else:
-            prev_image = f"/static/user/{uuid}/out.png?{int(time.time())}"
+            image_paths = {
+                "out_first": f"/static/user/{uuid}/out_first.png?{int(time.time())}",
+                "out_avgframe": f"/static/user/{uuid}/out_avgframe.png?{int(time.time())}",
+                "out": f"/static/user/{uuid}/out.png?{int(time.time())}",
+            }
 
         # print(request.cookies.get('UUID'))
-        return render_template("index.html", error=None, preview_img=prev_image)
+        return render_template("index.html", image_paths=image_paths)
 
-    elif request.method == "POST":
+
+@app.route("/api/stabilize", methods=["POST"])
+def stabilize():
+    (uuid, filepath) = getUserFolder(request)
+    birdManager.sendCommand(uuid, "stabilize")
+    return jsonify({"status": "success", "message": "Stabilization started"})
+
+
+@app.route("/api/layer", methods=["POST"])
+def layer():
+    if request.method == "POST":
         # print(request.form)
         try:
             r = request.form.to_dict()
@@ -76,18 +91,13 @@ def index():
             "denoise_radius": int(r["range4slider"]),
         }
 
-        # start the worker
-        birdManager.startWorker(
-            uuid, filepath, int(r["range1slider"]), param_img_tweak_params
-        )
-
-        resp = make_response(
-            render_template(
-                "index.html",
-                error=None,
-                preview_img=f"/static/user/{uuid}/out.png?{int(time.time())}",
-            )
-        )
+        skip_frames = int(r.get("range1slider", 5))
+        birdManager.sendCommand(uuid, "layer", {"skip_frames": skip_frames, "img_tweak_params": param_img_tweak_params})
+        
+        resp = jsonify({
+            "status": "success", 
+            "message": "Layering started"
+        })
         resp.set_cookie("UUID", uuid)
 
         return resp
@@ -157,6 +167,7 @@ def upload():
     """
     upload and save video
     """
+    status = "error"
     message = None
 
     (uuid, filepath) = getUserFolder(request)
@@ -207,15 +218,39 @@ def upload():
                 # Sanitize CR out
                 f.write(fcontent)
 
+            status = "success"
             message = f"successfully uploaded {newfile.filename} ({file_length} bytes)"
+            # start the worker
+            birdManager.startWorker(uuid, filepath)
+
+        resp = jsonify({
+            "status": "success",
+            "message": "Worker started",
+            "preview_img": f"/static/user/{uuid}/out.png?{int(time.time())}"
+        })
 
     else:
         message = "unable to process file"
 
-    resp = make_response(render_template("index.html", error=message))
+    resp = jsonify({"status": status, "message": message})
     resp.set_cookie("UUID", uuid)
 
     return resp
+
+@app.route("/api/download", methods=["GET", "POST"])
+def download():
+    uuid = request.cookies.get("UUID")
+    if not uuid:
+        return jsonify({"status": "error", "message": "Session not found"}), 400
+        
+    filepath = os.path.normpath(f"{app.root_path}/static/user/{uuid}/out.png")
+    
+    if not os.path.exists(filepath):
+        return jsonify({"status": "error", "message": "Image not found. Please layer an image first."}), 404
+
+    download_filename = f"birdflight_{int(time.time())}.png"
+    
+    return send_file(filepath, as_attachment=True, download_name=download_filename)
 
 
 @app.route("/info")
@@ -236,6 +271,15 @@ def info():
 def imgview():
     """ """
     uuid = request.cookies.get("UUID")
+
+    if uuid is None:
+        image_paths = None
+    else:
+        image_paths = {
+            "out_first": f"/static/user/{uuid}/out_first.png?{int(time.time())}",
+            "out_avgframe": f"/static/user/{uuid}/out_avgframe.png?{int(time.time())}",
+            "out": f"/static/user/{uuid}/out.png?{int(time.time())}",
+        }
 
     global birdManager
 
@@ -259,7 +303,7 @@ def imgview():
 
     return render_template(
         "imgview.html",
-        preview_img=f"/static/user/{uuid}/out.png?{int(time.time())}",
+        image_paths=image_paths,
         isdone=done,
         error=error,
         infoString=infoString,

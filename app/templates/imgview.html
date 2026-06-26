@@ -7,14 +7,9 @@
 
 <body>
   <div class="page-container-box">
-    <div class="row-header">
-      <div class="menubar">
-        <div class="menubar-item" id="tab-stabilization"><a href="{{ url_for('index') }}">Home</a></div>
-        <div class="menubar-item" id="tab-avgcolor"><a href="{{ url_for('info') }}">Info</a></div>
-        <div class="menubar-item" id="tab-layering"><a href="{{ url_for('info') }}">Info</a></div>
-      </div>
-    </div>
-    <img src="{{ preview_img }}">
+      <img src="{{ image_paths['out_first'] }}">
+      <img src="{{ image_paths['out_avgframe'] }}">
+      <img src="{{ image_paths['out'] }}">
   </div>
 
 

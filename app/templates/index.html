@@ -2,47 +2,37 @@
 
 {% block pageinfo %}
 <script>
-  var activeTab = document.getElementById("tab-home")
-  activeTab.style.backgroundColor = "#FFFFFF";
+  // Tiny fix: wrapped in DOMContentLoaded to prevent errors if element isn't rendered yet
+  document.addEventListener("DOMContentLoaded", function () {
+    var activeTab = document.getElementById("tab-home");
+    if (activeTab) activeTab.style.backgroundColor = "#FFFFFF";
+  });
 </script>
 {% endblock %}
 
 {% block content %}
 <div class="parent">
   <div class="left">
-    <!--
-    <div>
-      <p>This website generates stacked images of birds in flight. Take a short (less than 20s) video that is stable
-        (angle
-        does not move significantly) and this program will overlay the changes on top! See the Info page for some
-        examples.
-      </p>
-      <p>TLDR: Select Video, Upload, Then hit Generate. Wait for the image on the right to refresh.</p>
-    </div>
--->
     <div class="entry-step">
       <div class="entry-step-title">
         <h3>1. Upload Video</h3>
       </div>
       <div class="entry-step-body">
-        <p>
-          Upload a video. Good videos:
-        </p>
+        <p>Upload a video. Good videos:</p>
         <ul>
           <li>Are less than 20s</li>
           <li>Have no panning or zooming</li>
           <li>Have some static reference points</li>
         </ul>
 
-        <form action="/api/upload" method="post" enctype="multipart/form-data">
+        <form id="uploadForm" action="/api/upload" method="post" enctype="multipart/form-data">
           <input type="file" name="videofile" id="videofile" accept="video/*"><br>
           <button type="submit">Upload</button>
         </form>
-        {% if error %}
-        <p>Message: {{ error }}</p>
-        {% endif %}
+        <p id="uploadStatus" style="font-weight: bold; margin-top: 10px;"></p>
       </div>
     </div>
+
     <div class="entry-step">
       <div class="entry-step-title">
         <h3>2. Stabilize</h3>
@@ -50,23 +40,21 @@
       <div class="entry-step-body">
         <p>After uploading, you only need to stabilize once.</p>
         <p>You can see the result of the stabilization as a plot.</p>
-        <form action="/api/stabilize" method="post" enctype="multipart/form-data">
+        <form id="stabilizeForm" action="/api/stabilize" method="post" enctype="multipart/form-data">
           <button type="submit">Stabilize</button>
         </form>
+        <p id="stabilizeStatus" style="font-weight: bold; margin-top: 10px;"></p>
       </div>
     </div>
 
     <div class="entry-step">
       <div class="entry-step-title">
-
         <h3>3. Layer</h3>
       </div>
       <div class="entry-step-body">
-        <p>
-          This is the step that generates an output image.
-        </p>
+        <p>This is the step that generates an output image.</p>
         <p>Lower thresholds mean that smaller differences will be stacked.</p>
-        <form action="/" method="post" enctype="multipart/form-data">
+        <form id="layerForm" action="/api/layer" method="post" enctype="multipart/form-data">
           <label for="range1">Skip frames</label>
           <div class="slider-and-value">
             <div class="slider-value" id="range1"></div>
@@ -87,50 +75,12 @@
 
           <label for="range4">Despeckle Radius (Pixels)</label>
           <div class="slider-and-value">
-
             <div class="slider-value" id="range4"></div>
             <input type="range" min="0" max="20" value="1" class="slider" id="range4slider" name="range4slider">
           </div>
           <button type="submit">Generate New Image</button>
         </form>
-
-        <script>
-          var slider1 = document.getElementById("range1slider");
-          var output1 = document.getElementById("range1");
-          output1.innerHTML = slider1.value; // Display the default slider value
-
-          // Update the current slider value (each time you drag the slider handle)
-          slider1.oninput = function () {
-            output1.innerHTML = this.value;
-          }
-
-          var slider2 = document.getElementById("range2slider");
-          var output2 = document.getElementById("range2");
-          output2.innerHTML = slider2.value; // Display the default slider value
-
-          // Update the current slider value (each time you drag the slider handle)
-          slider2.oninput = function () {
-            output2.innerHTML = this.value;
-          }
-
-          var slider3 = document.getElementById("range3slider");
-          var output3 = document.getElementById("range3");
-          output3.innerHTML = slider3.value; // Display the default slider value
-
-          // Update the current slider value (each time you drag the slider handle)
-          slider3.oninput = function () {
-            output3.innerHTML = this.value;
-          }
-
-          var slider4 = document.getElementById("range4slider");
-          var output4 = document.getElementById("range4");
-          output4.innerHTML = slider4.value; // Display the default slider value
-
-          // Update the current slider value (each time you drag the slider handle)
-          slider4.oninput = function () {
-            output4.innerHTML = this.value;
-          } 
-        </script>
+        <p id="layerStatus" style="font-weight: bold; margin-top: 10px;"></p>
       </div>
     </div>
 
@@ -145,14 +95,100 @@
       </div>
     </div>
   </div>
+
   <div class="right">
     <div class="frame-container">
-      <iframe src="/imgview" title="Image Preview" class="responsive-iframe"></iframe>
+      {% if image_paths %}
+        <iframe src="/imgview" title="Image Preview" class="responsive-iframe"></iframe>
+      {% endif %}
     </div>
-    <div class="console-out">
-      <h3>Console Out</h3>
-      <p>></p>
+    <h3>Console Out</h3>
+    <div id="consoleText">
+      <div class="console-out">
+
+      </div>
     </div>
   </div>
 </div>
+
+<script>
+  // --- 1. SLIDER LOGIC ---
+  const setupslider = (sliderId, valueId) => {
+    const slider = document.getElementById(sliderId);
+    const output = document.getElementById(valueId);
+    output.innerHTML = slider.value;
+    slider.oninput = function () { output.innerHTML = this.value; }
+  };
+  setupslider("range1slider", "range1");
+  setupslider("range2slider", "range2");
+  setupslider("range3slider", "range3");
+  setupslider("range4slider", "range4");
+
+  // --- 2. CENTRALIZED CONSOLE LOGGER ---
+  function logToConsole(message, type = "info") {
+    const consoleBox = document.getElementById("consoleText");
+    const timestamp = new Date().toLocaleTimeString();
+
+    // Style adjustments based on success/error/pending status
+    let color = "#000000"; // default info color
+    if (type === "pending") color = "#ffa500"; // orange
+    if (type === "success") color = "#00ff00"; // bright green
+    if (type === "error") color = "#ff4d4d"; // red
+
+    // Create a new line element for this specific log entry
+    const logLine = document.createElement("div");
+    logLine.style.color = color;
+    logLine.style.marginBottom = "4px";
+    logLine.innerText = `[${timestamp}] > ${message}`;
+
+    // Append the new log to the container
+    consoleBox.appendChild(logLine);
+
+    // Optional: Automatically scroll console box to the bottom if it overflows
+    const consoleContainer = document.getElementById("consoleText");
+    consoleContainer.scrollTop = consoleContainer.scrollHeight;
+  }
+
+  // --- 3. AJAX FORM HANDLING HELPER ---
+  function handleFormSubmit(formId, actionName, successCallback) {
+    const form = document.getElementById(formId);
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault(); // Stop page reload
+
+      logToConsole(`Starting ${actionName}...`, "pending");
+
+      const formData = new FormData(form);
+
+      fetch(form.action, {
+        method: form.method,
+        body: formData
+      })
+        .then(response => {
+          if (!response.ok) throw new Error(`Server dropped request with status ${response.status}`);
+          return response.text();
+        })
+        .then(data => {
+          logToConsole(`${actionName} completed successfully!`, "success");
+          if (data) logToConsole(`Server response: ${data}`);
+
+          if (successCallback) successCallback(data);
+        })
+        .catch(error => {
+          logToConsole(`${actionName} failed: ${error.message}`, "error");
+        });
+    });
+  }
+
+  // --- 4. BIND THE AJAX FORMS ---
+
+  // Step 1: Upload
+  handleFormSubmit('uploadForm', 'Video Upload');
+
+  // Step 2: Stabilize
+  handleFormSubmit('stabilizeForm', 'Video Stabilization');
+
+  // Step 3: Layer
+  handleFormSubmit('layerForm', 'Image Layering');
+</script>
 {% endblock %}

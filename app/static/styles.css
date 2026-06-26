@@ -212,14 +212,6 @@ button {
 }
 
 
-
-
-
-
-
-
-
-
 .frame-container {
     border-style: solid;
     position: relative;
@@ -239,3 +231,24 @@ button {
     width: 100%;
     height: 100%;
 }
+
+/* Target the container holding the logs */
+#consoleText {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  
+  /* --- The magic scrollable properties --- */
+  max-height: 250px;           /* Sets the maximum height before scrolling kicks in */
+  overflow-y: auto;            /* Shows a vertical scrollbar ONLY when content overflows */
+  overflow-x: hidden;           /* Prevents awkward horizontal scrollbars by wrapping text */
+  word-wrap: break-word;       /* Forces long strings/errors to break and wrap to the next line */
+}
+
+.console-out {
+  padding: 15px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  width: 100%;
+}
+

@@ -1,6 +1,6 @@
 import cv2 as cv
 import numpy as np
-from multiprocessing import Process, shared_memory, Value, Array
+from multiprocessing import Process, shared_memory, Value, Array, Queue
 from ctypes import Structure, c_int32, c_bool, c_char_p
 import os
 import time
@@ -29,11 +29,10 @@ class bgenManager:
                 "currentFrame": 0,
             }
         }
-        return
+        return        
 
-    def startWorker(
-        self, worker_name, worker_filepath, param_skipframes, param_img_tweak_params
-    ):
+    def startWorker(self, worker_name, worker_filepath):
+
         if worker_name in self.allWorkers.keys():
             # if this user already has a job, kill it and start a new one
             self.killWorker(worker_name)
@@ -48,6 +47,8 @@ class bgenManager:
         errorString = Array("c", SHARED_STRING_LEN)
         errorString.value = b"no error"
 
+        cmd_queue = Queue()
+
         worker_videoname = getInputFile(worker_filepath)
 
         w = bgenWorker(
@@ -59,8 +60,7 @@ class bgenManager:
             errorString,
             worker_filepath,
             worker_videoname,
-            param_skipframes,
-            param_img_tweak_params,
+            cmd_queue,
         )
 
         # after this point, the class is copied to the new process. Only values with shared memory can be accessed
@@ -76,9 +76,16 @@ class bgenManager:
             "startTime": int(time.time()),
             "totalFrames": totalframes,
             "currentFrame": currframe,
+            "command_queue": cmd_queue,
         }
 
         return
+
+    def sendCommand(self, worker_name, command, args=None):
+        if worker_name in self.allWorkers:
+            self.allWorkers[worker_name]["command_queue"].put((command, args))
+            return True
+        return False
 
     def cullWorkers(self):
         """Call this every once in a while to remove known workers from the list"""
@@ -125,8 +132,7 @@ class bgenWorker:
         errorString,
         folderpath,
         videofilename,
-        skip_frames,
-        img_tweak_params,
+        command_queue,
     ):
         self.isdone = isdone
         self.haserror = haserror
@@ -136,37 +142,16 @@ class bgenWorker:
 
         self.totalframes = totalframes
         self.currframe = currframe
+        self.command_queue = command_queue
 
         self.videopath = os.path.normpath(f"{folderpath}/{videofilename}")
         self.imgpath = os.path.normpath(f"{folderpath}/out.png")
 
-        self.skip_frames = skip_frames
+        self.skip_frames = 5
 
         self.frame_diff_threshold = 50
         self.background_diff_threshold = 50
         self.denoise_radius = 4
-
-        self.img_tweak_params = img_tweak_params
-        """
-        img_tweak_params = {"frame_diff_threshold": 50,
-                        "background_diff_threshold": 50,
-                        "denoise_radius": 4}
-        """
-
-        if "frame_diff_threshold" in img_tweak_params.keys():
-            self.frame_diff_threshold = self.clipTo8bit(
-                img_tweak_params["frame_diff_threshold"]
-            )
-
-        if "background_diff_threshold" in img_tweak_params.keys():
-            self.background_diff_threshold = self.clipTo8bit(
-                img_tweak_params["background_diff_threshold"]
-            )
-
-        if "denoise_radius" in img_tweak_params.keys():
-            self.denoise_radius = self.clipTo8bit(
-                img_tweak_params["denoise_radius"], False
-            )
 
         self.stabilized_frames = None
 
@@ -191,6 +176,68 @@ class bgenWorker:
         if not ret:
             return
 
+        self.setinfostring("Saving first frame")
+        self.saveFirstFrame()
+        self.setinfostring("Idle")
+
+        # Event loop to keep the process alive
+        while True:
+            task = self.command_queue.get()
+            if task is None:
+                break
+
+            cmd, args = task
+            self.isdone.value = False
+            self.haserror.value = False
+
+            if cmd == "stabilize":
+                self.setinfostring("Stabilizing footage")
+                self.stabilize()
+            elif cmd == "average":
+                self.setinfostring("Computing average pixel colors")
+                self.getAverageFrame()
+            elif cmd == "layer":
+                self.setinfostring("Applying effect")
+                if args:
+                    self.setParams(args.get("skip_frames", self.skip_frames), args.get("img_tweak_params", {}))
+                self.layering()
+            elif cmd == "doEverything":
+                self.doEverything()
+            elif cmd == "exit":
+                break
+
+            self.isdone.value = True
+            self.setinfostring("Idle")
+            
+        if hasattr(self, '_cap') and self._cap is not None:
+            self._cap.release()
+
+    def setParams(self, skip_frames, img_tweak_params):
+        self.skip_frames = skip_frames
+
+        self.img_tweak_params = img_tweak_params
+        """
+        img_tweak_params = {"frame_diff_threshold": 50,
+                        "background_diff_threshold": 50,
+                        "denoise_radius": 4}
+        """
+
+        if "frame_diff_threshold" in img_tweak_params.keys():
+            self.frame_diff_threshold = self.clipTo8bit(
+                img_tweak_params["frame_diff_threshold"]
+            )
+
+        if "background_diff_threshold" in img_tweak_params.keys():
+            self.background_diff_threshold = self.clipTo8bit(
+                img_tweak_params["background_diff_threshold"]
+            )
+
+        if "denoise_radius" in img_tweak_params.keys():
+            self.denoise_radius = self.clipTo8bit(
+                img_tweak_params["denoise_radius"], False
+            )
+
+    def doEverything(self):
         self.setinfostring("Stabilizing footage")
         self.stabilize()
         self.setinfostring("Computing average pixel colors")
@@ -198,6 +245,7 @@ class bgenWorker:
         self.setinfostring("Applying effect")
         self.layering()
         self.setinfostring("Complete")
+
 
     def stabilize(self):
         """stabilize and preprocess the video"""
@@ -225,9 +273,13 @@ class bgenWorker:
 
             curr_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-            curr_pts, status, err = cv.calcOpticalFlowPyrLK(
-                prev_gray, curr_gray, prev_pts, None
-            )
+            try:
+                curr_pts, status, err = cv.calcOpticalFlowPyrLK(
+                    prev_gray, curr_gray, prev_pts, None
+                )
+            except:
+                self.errorString.value = bytes("stabilization crash", "ascii")
+                return
 
             # Filter only valid points
             idx = np.where(status == 1)[0]
@@ -405,9 +457,6 @@ class bgenWorker:
         if DEBUG_CV_IMSHOW:
             cv.destroyAllWindows()
 
-        self._cap.release()
-        self.isdone.value = True
-
         return
 
     def openfile(self):
@@ -440,8 +489,26 @@ class bgenWorker:
             np.uint8
         )
 
+        out_path = os.path.normpath(f"{self.folderpath}/out_avgframe.png")
+        cv.imwrite(out_path, frame_output)
+
         self._background = frame_output
         return frame_output
+
+    def saveFirstFrame(self):
+        """Opens the first frame of the video and saves it to a file."""
+        try:
+            cap = cv.VideoCapture(self.videopath)
+            ret, frame = cap.read()
+            if ret:
+                out_path = os.path.normpath(f"{self.folderpath}/out_first.png")
+                cv.imwrite(out_path, frame)
+            cap.release()
+            return ret
+        except Exception as e:
+            print("Error saving first frame")
+            print(format_exc())
+            return False
 
 
 def getInputFile(folderpath):
