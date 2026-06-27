@@ -86,6 +86,9 @@ class bgenManager:
             self.allWorkers[worker_name]["command_queue"].put((command, args))
             return True
         return False
+    
+    def getMessages(self, worker_name):
+        return self.allWorkers[worker_name]["errorString"].value
 
     def cullWorkers(self):
         """Call this every once in a while to remove known workers from the list"""

@@ -64,6 +64,19 @@ def index():
         return render_template("index.html", image_paths=image_paths)
 
 
+
+
+@app.route("/api/messages", methods=["GET"])
+def messages():
+    uuid = request.cookies.get("UUID")
+    if not uuid:
+        return jsonify({"status": "none", "message": ""}), 200
+    message = birdManager.getMessages(uuid)
+    if len(message) > 0:
+        return jsonify({"status": "message", "message": message}), 200
+    return jsonify({"status": "none", "message": ""}), 200
+
+
 @app.route("/api/stabilize", methods=["POST"])
 def stabilize():
     (uuid, filepath) = getUserFolder(request)
@@ -241,7 +254,7 @@ def upload():
 def download():
     uuid = request.cookies.get("UUID")
     if not uuid:
-        return jsonify({"status": "error", "message": "Session not found"}), 400
+        return jsonify({"status": "error", "message": "Session not found"}), 200
         
     filepath = os.path.normpath(f"{app.root_path}/static/user/{uuid}/out.png")
     
