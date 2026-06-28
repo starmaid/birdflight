@@ -97,10 +97,29 @@
   </div>
 
   <div class="right">
+    {% if image_paths %}
     <div class="frame-container">
-      {% if image_paths %}
-      <iframe src="/imgview" title="Image Preview" class="responsive-iframe"></iframe>
-      {% endif %}
+      <div class="frame-hstack">
+        <div>
+          <h3>first frame</h3>
+          <iframe id="iframe1" src="/imgview?f=out_first" title="Image Preview" class="responsive-iframe2"></iframe>
+        </div>
+        <div>
+          <h3>average frame color</h3>
+          <iframe id="iframe2" src="/imgview?f=out_avgframe" title="Image Preview" class="responsive-iframe2"></iframe>
+        </div>
+      </div>
+      <div>
+        <h3>layered image</h3>
+        <iframe id="iframe3" src="/imgview?f=out" title="Image Preview" class="responsive-iframe"></iframe>
+      </div>
+    </div>
+    {% endif %}
+
+    <div id="status">
+    </div>
+    <div id="errors">
+
     </div>
     <h3>Console Out</h3>
     <div id="consoleText">
@@ -154,6 +173,9 @@
     const form = document.getElementById(formId);
 
     form.addEventListener('submit', function (event) {
+      if (actionName == "Download") {
+        return;
+      }
       event.preventDefault(); // Stop page reload
 
       logToConsole(`Starting ${actionName}...`, "pending");
@@ -169,11 +191,12 @@
           return response.text();
         })
         .then(data => {
+
           let parsedData = JSON.parse(data);
           console.log(parsedData)
           logToConsole(`${actionName} response:`);
           if (parsedData) logToConsole(`Server response: ${parsedData.message}`);
-
+          if (formId == 'uploadForm') refreshIframes();
           if (successCallback) successCallback(parsedData);
         })
         .catch(error => {
@@ -188,6 +211,16 @@
   handleFormSubmit('layerForm', 'Image Layering');
   handleFormSubmit('downloadForm', 'Download');
 
+  let last_isdone = true;
+
+  function isdone_edge(new_isdone) {
+    let out = false;
+    if (last_isdone == false && new_isdone == true) {
+      out = true;
+    }
+    last_isdone = new_isdone;
+    return out;
+  }
 
   // query the messages once a second
   function queryMessages() {
@@ -201,10 +234,24 @@
         if (parsedData.status != "none") {
           logToConsole(`Server response: ${parsedData.message}`);
         }
+        info = `${parsedData.data.infoString} ${parsedData.data.currframe}/${parsedData.data.totalframes} ${parsedData.data.duration}s`;
+        doneerror = `Done: ${parsedData.data.done} Errored: ${parsedData.data.error}: ${parsedData.data.errorString}`;
+        document.getElementById("status").innerHTML = info;
+        document.getElementById("errors").innerHTML = doneerror;
+        if (isdone_edge(parsedData.data.done)) {
+          refreshIframes();
+          }
       })
       .catch(error => {
         logToConsole(`failed: ${error.message}`, "error");
       });
+  }
+
+  function refreshIframes() {
+document.getElementById('iframe1').contentWindow.location.reload();
+          document.getElementById('iframe2').contentWindow.location.reload();
+          document.getElementById('iframe3').contentWindow.location.reload();
+        
   }
 
 

@@ -214,22 +214,25 @@ button {
 
 .frame-container {
     border-style: solid;
-    position: relative;
-    overflow: hidden;
     width: 100%;
     min-height: 20rem;
     /*padding-top: 56.25%; 16:9 Aspect Ratio (divide 9 by 16 = 0.5625) */
 }
+
+.frame-hstack {
+    display: flex;
+    flex-direction: row;
+}
+
+.responsive-iframe2 {
+    min-height: 10rem;
+    border-style: solid;
+}
   
 /* Then style the iframe to fit in the container div with full height and width */
 .responsive-iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
     width: 100%;
-    height: 100%;
+    min-height: 22rem;
 }
 
 /* Target the container holding the logs */
@@ -237,6 +240,7 @@ button {
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
   line-height: 1.5;
+  width: 100%;
   
   /* --- The magic scrollable properties --- */
   max-height: 250px;           /* Sets the maximum height before scrolling kicks in */

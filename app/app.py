@@ -73,15 +73,41 @@ def messages():
         return jsonify({"status": "none", "message": ""}), 200
     message = birdManager.getMessages(uuid)
     if len(message) > 0:
-        return jsonify({"status": "message", "message": message}), 200
-    return jsonify({"status": "none", "message": ""}), 200
+        status = "message"
+    else:
+        status = "none"
+    return jsonify({"status": status, "message": message, "data": getData(uuid)}), 200
+
+
+
+def getData(uuid):
+    if uuid in birdManager.allWorkers.keys():
+        workerref = birdManager.allWorkers[uuid]
+        error = workerref["hasError"].value
+        infoString = workerref["infoString"].value.decode("ascii")
+        errorString = workerref["errorString"].value.decode("ascii")
+        done = workerref["isDone"].value
+        duration = int(time.time()) - workerref["startTime"]
+        totalframes = workerref["totalFrames"].value
+        currframe = workerref["currentFrame"].value
+
+        return {
+            "error":error,
+            "infoString":infoString,
+            "errorString":errorString,
+            "done":done,
+            "duration":duration,
+            "totalframes":totalframes,
+            "currframe":currframe,
+        }
+    return {}
 
 
 @app.route("/api/stabilize", methods=["POST"])
 def stabilize():
     (uuid, filepath) = getUserFolder(request)
-    birdManager.sendCommand(uuid, "stabilize")
-    return jsonify({"status": "success", "message": "Stabilization started"})
+    birdManager.startWorker(uuid, filepath, "call_stabilize")
+    return jsonify({"status": "success", "message": "Stabilization command sent"})
 
 
 @app.route("/api/layer", methods=["POST"])
@@ -99,13 +125,13 @@ def layer():
 
         # extract the image params
         param_img_tweak_params = {
+            "skip_frames": int(r.get("range1slider", 5)),
             "frame_diff_threshold": int(r["range2slider"]),
             "background_diff_threshold": int(r["range3slider"]),
             "denoise_radius": int(r["range4slider"]),
         }
 
-        skip_frames = int(r.get("range1slider", 5))
-        birdManager.sendCommand(uuid, "layer", {"skip_frames": skip_frames, "img_tweak_params": param_img_tweak_params})
+        birdManager.startWorker(uuid, filepath, "call_layer", param_img_tweak_params)
         
         resp = jsonify({
             "status": "success", 
@@ -234,7 +260,7 @@ def upload():
             status = "success"
             message = f"successfully uploaded {newfile.filename} ({file_length} bytes)"
             # start the worker
-            birdManager.startWorker(uuid, filepath)
+            birdManager.startWorker(uuid, filepath, "start")
 
         resp = jsonify({
             "status": "success",
@@ -259,11 +285,13 @@ def download():
     filepath = os.path.normpath(f"{app.root_path}/static/user/{uuid}/out.png")
     
     if not os.path.exists(filepath):
-        return jsonify({"status": "error", "message": "Image not found. Please layer an image first."}), 404
+        return jsonify({"status": "error", "message": "Image not found. Please layer an image first."}), 200
 
     download_filename = f"birdflight_{int(time.time())}.png"
+
+    response = send_file(filepath, as_attachment=True, download_name=download_filename)
     
-    return send_file(filepath, as_attachment=True, download_name=download_filename)
+    return response
 
 
 @app.route("/info")
@@ -296,34 +324,11 @@ def imgview():
 
     global birdManager
 
-    try:
-        workerref = birdManager.allWorkers[uuid]
-        error = workerref["hasError"].value
-        infoString = workerref["infoString"].value.decode("ascii")
-        errorString = workerref["errorString"].value.decode("ascii")
-        done = workerref["isDone"].value
-        duration = int(time.time()) - workerref["startTime"]
-        totalframes = workerref["totalFrames"].value
-        currframe = workerref["currentFrame"].value
-    except KeyError:
-        error = None
-        infoString = None
-        errorString = None
-        done = None
-        duration = 0
-        totalframes = 0
-        currframe = 0
 
     return render_template(
         "imgview.html",
         image_paths=image_paths,
-        isdone=done,
-        error=error,
-        infoString=infoString,
-        errorString=errorString,
-        duration=duration,
-        totalframes=totalframes,
-        currframe=currframe,
+        img_to_render=request.args.get('f')
     )
 
 

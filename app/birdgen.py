@@ -29,9 +29,9 @@ class bgenManager:
                 "currentFrame": 0,
             }
         }
-        return        
+        return
 
-    def startWorker(self, worker_name, worker_filepath):
+    def startWorker(self, worker_name, worker_filepath, target_method, img_tweak_params={}):
 
         if worker_name in self.allWorkers.keys():
             # if this user already has a job, kill it and start a new one
@@ -45,9 +45,7 @@ class bgenManager:
         infoString = Array("c", SHARED_STRING_LEN)
         infoString.value = b"Initializing"
         errorString = Array("c", SHARED_STRING_LEN)
-        errorString.value = b"no error"
-
-        cmd_queue = Queue()
+        errorString.value = b""
 
         worker_videoname = getInputFile(worker_filepath)
 
@@ -60,11 +58,11 @@ class bgenManager:
             errorString,
             worker_filepath,
             worker_videoname,
-            cmd_queue,
+            img_tweak_params,
         )
 
         # after this point, the class is copied to the new process. Only values with shared memory can be accessed
-        bgenworkerproc = Process(target=w.start, args=(), daemon=True)
+        bgenworkerproc = Process(target=getattr(w,target_method), args=(), daemon=True)
         bgenworkerproc.start()
 
         self.allWorkers[worker_name] = {
@@ -76,19 +74,17 @@ class bgenManager:
             "startTime": int(time.time()),
             "totalFrames": totalframes,
             "currentFrame": currframe,
-            "command_queue": cmd_queue,
         }
 
         return
-
-    def sendCommand(self, worker_name, command, args=None):
-        if worker_name in self.allWorkers:
-            self.allWorkers[worker_name]["command_queue"].put((command, args))
-            return True
-        return False
     
     def getMessages(self, worker_name):
-        return self.allWorkers[worker_name]["errorString"].value
+        if worker_name in self.allWorkers.keys():
+            out = self.allWorkers[worker_name]["errorString"].value.decode()
+            self.allWorkers[worker_name]["errorString"].value = bytes("","ascii")
+            return out
+        else:
+            return ""
 
     def cullWorkers(self):
         """Call this every once in a while to remove known workers from the list"""
@@ -99,10 +95,10 @@ class bgenManager:
             t = self.allWorkers[worker_name]
             worker_active_time = time.time() - t["startTime"]
 
-            if t["isDone"] == True and worker_active_time > 100:
+            if t["isDone"] and worker_active_time > 100:
                 # remove completed workers that are 100 seconds old
                 self.killWorker(worker_name)
-            elif t["isDone"] == False and worker_active_time > 600:
+            elif not t["isDone"] and worker_active_time > 600:
                 # kill workers that havent finished that are 10 min old
                 self.killWorker(worker_name)
             else:
@@ -135,7 +131,7 @@ class bgenWorker:
         errorString,
         folderpath,
         videofilename,
-        command_queue,
+        img_tweak_params,
     ):
         self.isdone = isdone
         self.haserror = haserror
@@ -145,18 +141,20 @@ class bgenWorker:
 
         self.totalframes = totalframes
         self.currframe = currframe
-        self.command_queue = command_queue
 
         self.videopath = os.path.normpath(f"{folderpath}/{videofilename}")
+        self.stabilized_path = os.path.normpath(f"{folderpath}/stabilized.npy")
+        self.avg_color = os.path.normpath(f"{folderpath}/avg_color.npy")
         self.imgpath = os.path.normpath(f"{folderpath}/out.png")
 
         self.skip_frames = 5
-
         self.frame_diff_threshold = 50
         self.background_diff_threshold = 50
         self.denoise_radius = 4
 
         self.stabilized_frames = None
+
+        self.setParams(img_tweak_params)
 
         return
 
@@ -182,48 +180,64 @@ class bgenWorker:
         self.setinfostring("Saving first frame")
         self.saveFirstFrame()
         self.setinfostring("Idle")
-
-        # Event loop to keep the process alive
-        while True:
-            task = self.command_queue.get()
-            if task is None:
-                break
-
-            cmd, args = task
-            self.isdone.value = False
-            self.haserror.value = False
-
-            if cmd == "stabilize":
-                self.setinfostring("Stabilizing footage")
-                self.stabilize()
-            elif cmd == "average":
-                self.setinfostring("Computing average pixel colors")
-                self.getAverageFrame()
-            elif cmd == "layer":
-                self.setinfostring("Applying effect")
-                if args:
-                    self.setParams(args.get("skip_frames", self.skip_frames), args.get("img_tweak_params", {}))
-                self.layering()
-            elif cmd == "doEverything":
-                self.doEverything()
-            elif cmd == "exit":
-                break
-
-            self.isdone.value = True
-            self.setinfostring("Idle")
             
         if hasattr(self, '_cap') and self._cap is not None:
             self._cap.release()
+        self.isdone.value = True
 
-    def setParams(self, skip_frames, img_tweak_params):
-        self.skip_frames = skip_frames
+    def call_stabilize(self):
+        # try to open the file first
+        ret = self.openfile()
+        if not ret:
+            return
+    
+        self.setinfostring("Stabilizing")
+        self.stabilize()
+        self.setinfostring("Computing average pixel colors")
+        self.getAverageFrame()
+        self.setinfostring("Idle")
 
+        if hasattr(self, '_cap') and self._cap is not None:
+            self._cap.release()
+
+        np.save(self.stabilized_path,self.stabilized_frames)
+        np.save(self.avg_color,self._background)
+        self.isdone.value = True
+
+
+    def call_layer(self):
+        ret = self.openfile()
+        if not ret:
+            return
+
+        try:
+            self.stabilized_frames = np.load(self.stabilized_path)
+            self._background = np.load(self.avg_color)
+        except:
+            self.setinfostring("Error loading data. have you stabilized?")
+            return
+        
+        self.setinfostring("Applying effect")
+        self.layering()
+        self.setinfostring("Idle")
+        self.isdone.value = True
+
+
+    def setParams(self, img_tweak_params):
         self.img_tweak_params = img_tweak_params
         """
-        img_tweak_params = {"frame_diff_threshold": 50,
+        img_tweak_params = {
+                        "skip_frames": 5,
+                        "frame_diff_threshold": 50,
                         "background_diff_threshold": 50,
-                        "denoise_radius": 4}
+                        "denoise_radius": 4
+                        }
         """
+
+        if "skip_frames" in img_tweak_params.keys():
+            self.skip_frames = self.clipTo8bit(
+                img_tweak_params["skip_frames"]
+            )
 
         if "frame_diff_threshold" in img_tweak_params.keys():
             self.frame_diff_threshold = self.clipTo8bit(
@@ -248,13 +262,13 @@ class bgenWorker:
         self.setinfostring("Applying effect")
         self.layering()
         self.setinfostring("Complete")
-
+        self.isdone.value = True
 
     def stabilize(self):
         """stabilize and preprocess the video"""
 
         self.stabilized_frames = np.zeros((self._length, self._h, self._w, 3), np.uint8)
-
+        
         for frame_num in range(self._length):
             ret, frame = self._cap.read()
             if not ret:
@@ -322,7 +336,7 @@ class bgenWorker:
                 blockSize=3,
             )
 
-            self.currframe.value = frame_num
+            self.currframe.value = frame_num + 1
 
     def layering(self):
         try:
@@ -437,7 +451,7 @@ class bgenWorker:
                 # cv.imwrite(self.imgpath,composite)
                 success = True
                 frame_num += 1
-                self.currframe.value = frame_num
+                self.currframe.value = frame_num + 1
 
             if success:
                 # also archive a copy when done
@@ -471,7 +485,6 @@ class bgenWorker:
             print("unable to open video")
             print(format_exc())
             self.haserror.value = True
-            self.isdone.value = True
             return False
 
         if self._length > MAX_FRAMES_RENDER:

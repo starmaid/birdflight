@@ -7,21 +7,16 @@
 
 <body>
   <div class="page-container-box">
-      <img src="{{ image_paths['out_first'] }}">
-      <img src="{{ image_paths['out_avgframe'] }}">
-      <img src="{{ image_paths['out'] }}">
+      <img src="{{ image_paths[img_to_render] }}">
   </div>
 
 
   <script>
     function refresh() {
-      setTimeout("location.reload();", 10000);
+      setTimeout("location.reload();", 20000);
     }
     refresh();
   </script>
-  <p>{{ infoString }} {{ currframe }}/{{ totalframes }} {{ duration }}s </p>
-  <p>Done: {{ isdone }} Errored: {{ error }}: {{ errorString }}</p>
-
 </body>
 
 </html>
