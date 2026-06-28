@@ -114,6 +114,8 @@
         <iframe id="iframe3" src="/imgview?f=out" title="Image Preview" class="responsive-iframe"></iframe>
       </div>
     </div>
+    {% else %}
+    <h2>Upload an image to begin.</h2>
     {% endif %}
 
     <div id="status">
@@ -191,7 +193,6 @@
           return response.text();
         })
         .then(data => {
-
           let parsedData = JSON.parse(data);
           console.log(parsedData)
           logToConsole(`${actionName} response:`);
@@ -234,13 +235,15 @@
         if (parsedData.status != "none") {
           logToConsole(`Server response: ${parsedData.message}`);
         }
-        info = `${parsedData.data.infoString} ${parsedData.data.currframe}/${parsedData.data.totalframes} ${parsedData.data.duration}s`;
-        doneerror = `Done: ${parsedData.data.done} Errored: ${parsedData.data.error}: ${parsedData.data.errorString}`;
-        document.getElementById("status").innerHTML = info;
-        document.getElementById("errors").innerHTML = doneerror;
-        if (isdone_edge(parsedData.data.done)) {
-          refreshIframes();
+        if (parsedData.data) {
+          info = `${parsedData.data.infoString} ${parsedData.data.currframe}/${parsedData.data.totalframes} ${parsedData.data.duration}s`;
+          doneerror = `Done: ${parsedData.data.done} Errored: ${parsedData.data.error}: ${parsedData.data.errorString}`;
+          document.getElementById("status").innerHTML = info;
+          document.getElementById("errors").innerHTML = doneerror;
+          if (isdone_edge(parsedData.data.done)) {
+            refreshIframes();
           }
+        }
       })
       .catch(error => {
         logToConsole(`failed: ${error.message}`, "error");
@@ -248,10 +251,10 @@
   }
 
   function refreshIframes() {
-document.getElementById('iframe1').contentWindow.location.reload();
-          document.getElementById('iframe2').contentWindow.location.reload();
-          document.getElementById('iframe3').contentWindow.location.reload();
-        
+    document.getElementById('iframe1').contentWindow.location.reload();
+    document.getElementById('iframe2').contentWindow.location.reload();
+    document.getElementById('iframe3').contentWindow.location.reload();
+
   }
 
 
