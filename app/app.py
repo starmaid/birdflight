@@ -61,9 +61,7 @@ def index():
             }
 
         # print(request.cookies.get('UUID'))
-        return render_template("index.html", image_paths=image_paths)
-
-
+        return render_template("index.html", version=version, image_paths=image_paths)
 
 
 @app.route("/api/messages", methods=["GET"])
@@ -79,7 +77,6 @@ def messages():
     return jsonify({"status": status, "message": message, "data": getData(uuid)}), 200
 
 
-
 def getData(uuid):
     if uuid in birdManager.allWorkers.keys():
         workerref = birdManager.allWorkers[uuid]
@@ -92,13 +89,13 @@ def getData(uuid):
         currframe = workerref["currentFrame"].value
 
         return {
-            "error":error,
-            "infoString":infoString,
-            "errorString":errorString,
-            "done":done,
-            "duration":duration,
-            "totalframes":totalframes,
-            "currframe":currframe,
+            "error": error,
+            "infoString": infoString,
+            "errorString": errorString,
+            "done": done,
+            "duration": duration,
+            "totalframes": totalframes,
+            "currframe": currframe,
         }
     return {}
 
@@ -132,11 +129,8 @@ def layer():
         }
 
         birdManager.startWorker(uuid, filepath, "call_layer", param_img_tweak_params)
-        
-        resp = jsonify({
-            "status": "success", 
-            "message": "Layering started"
-        })
+
+        resp = jsonify({"status": "success", "message": "Layering started"})
         resp.set_cookie("UUID", uuid)
 
         return resp
@@ -262,11 +256,13 @@ def upload():
             # start the worker
             birdManager.startWorker(uuid, filepath, "start")
 
-        resp = jsonify({
-            "status": "success",
-            "message": "Worker started",
-            "preview_img": f"/static/user/{uuid}/out.png?{int(time.time())}"
-        })
+        resp = jsonify(
+            {
+                "status": "success",
+                "message": "Worker started",
+                "preview_img": f"/static/user/{uuid}/out.png?{int(time.time())}",
+            }
+        )
 
     else:
         message = "unable to process file"
@@ -276,21 +272,27 @@ def upload():
 
     return resp
 
+
 @app.route("/api/download", methods=["GET", "POST"])
 def download():
     uuid = request.cookies.get("UUID")
     if not uuid:
         return jsonify({"status": "error", "message": "Session not found"}), 200
-        
+
     filepath = os.path.normpath(f"{app.root_path}/static/user/{uuid}/out.png")
-    
+
     if not os.path.exists(filepath):
-        return jsonify({"status": "error", "message": "Image not found. Please layer an image first."}), 200
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Image not found. Please layer an image first.",
+            }
+        ), 200
 
     download_filename = f"birdflight_{int(time.time())}.png"
 
     response = send_file(filepath, as_attachment=True, download_name=download_filename)
-    
+
     return response
 
 
@@ -324,11 +326,8 @@ def imgview():
 
     global birdManager
 
-
     return render_template(
-        "imgview.html",
-        image_paths=image_paths,
-        img_to_render=request.args.get('f')
+        "imgview.html", image_paths=image_paths, img_to_render=request.args.get("f")
     )
 
 
@@ -357,7 +356,7 @@ if __name__ == "__main__":
             .split("-")[0]
         )
     else:
-        version = "0.1.0"
+        version = config["version"]
 
     # start web server
     if config is not None:

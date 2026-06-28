@@ -173,6 +173,7 @@ body {
     background-color: white;
     border-radius: 0rem;
     border-style: solid;
+    border-color: var(--mid-border);
 }
 
 .entry-step {
@@ -213,7 +214,6 @@ button {
 
 
 .frame-container {
-    border-style: solid;
     width: 100%;
     min-height: 20rem;
     /*padding-top: 56.25%; 16:9 Aspect Ratio (divide 9 by 16 = 0.5625) */
@@ -226,7 +226,6 @@ button {
 
 .responsive-iframe2 {
     min-height: 10rem;
-    border-style: solid;
 }
   
 /* Then style the iframe to fit in the container div with full height and width */

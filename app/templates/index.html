@@ -197,7 +197,7 @@
           console.log(parsedData)
           logToConsole(`${actionName} response:`);
           if (parsedData) logToConsole(`Server response: ${parsedData.message}`);
-          if (formId == 'uploadForm') refreshIframes();
+          if (formId == 'uploadForm') document.location.reload();
           if (successCallback) successCallback(parsedData);
         })
         .catch(error => {
